@@ -1,0 +1,1623 @@
+<title>DEOH Sales Pulse</title>
+<meta name="description" content="DED/GE 銷售動態儀表板：上傳每月原始檔即自動更新，篩選連動 KPI、趨勢圖、品項缺口與客戶通路排名。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================== Design tokens ============================== */
+  :root{
+    --paper:#F3F7F7; --surface:#FFFFFF; --surface-2:#EAF1F1;
+    --border:#D7E4E4; --border-strong:#BFD2D2;
+    --ink:#122228; --ink-muted:#526A6E; --ink-faint:#8FA6A9;
+    --accent-ded:#0E7C86; --accent-ded-soft:#D8EEEF;
+    --accent-ge:#6A55AD;  --accent-ge-soft:#E7E2F5;
+    --prior-line:#B7C6C7;
+    --good:#1F8A54;  --good-soft:#E1F3E8;
+    --critical:#C4432C; --critical-soft:#FBE7E1;
+    --watch:#9C7B15; --watch-soft:#F5EDD3;
+    --shadow: 0 1px 2px rgba(18,34,40,.05), 0 8px 24px -14px rgba(18,34,40,.18);
+    --radius-lg:14px; --radius-md:10px; --radius-sm:7px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0E1618; --surface:#152023; --surface-2:#1B2A2D;
+      --border:#26383B; --border-strong:#324B4F;
+      --ink:#E7F1F1; --ink-muted:#95AEB1; --ink-faint:#5F787B;
+      --accent-ded:#49C7D1; --accent-ded-soft:#173338;
+      --accent-ge:#B0A0E8;  --accent-ge-soft:#2A2445;
+      --prior-line:#3C5052;
+      --good:#4FD190; --good-soft:#12301F;
+      --critical:#F0836B; --critical-soft:#3A1D16;
+      --watch:#E4C25A; --watch-soft:#332C11;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0E1618; --surface:#152023; --surface-2:#1B2A2D;
+    --border:#26383B; --border-strong:#324B4F;
+    --ink:#E7F1F1; --ink-muted:#95AEB1; --ink-faint:#5F787B;
+    --accent-ded:#49C7D1; --accent-ded-soft:#173338;
+    --accent-ge:#B0A0E8;  --accent-ge-soft:#2A2445;
+    --prior-line:#3C5052;
+    --good:#4FD190; --good-soft:#12301F;
+    --critical:#F0836B; --critical-soft:#3A1D16;
+    --watch:#E4C25A; --watch-soft:#332C11;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -16px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  body{ background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  h1,h2,h3{ font-family:'Manrope','Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif; text-wrap:balance; }
+  .num,.kpi-value,td.num,th.num{ font-family:'IBM Plex Mono','IBM Plex Sans',monospace; font-variant-numeric:tabular-nums; }
+  .wrap{ max-width:1320px; margin:0 auto; padding:18px 24px 64px; }
+
+  /* ---------- header ---------- */
+  .app-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:20px 24px 4px; max-width:1320px; margin:0 auto; flex-wrap:wrap; }
+  .app-header h1{ font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0; }
+  .eyebrow{ font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--accent-ded); margin:0 0 2px; }
+  .app-header .sub{ font-size:12.5px; color:var(--ink-muted); margin:3px 0 0; }
+  .head-right{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .chip{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-muted); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:5px 12px; white-space:nowrap; }
+  .chip b{ color:var(--accent-ded); font-weight:600; }
+  .chip.demo{ background:var(--watch-soft); border-color:transparent; color:var(--watch); font-weight:600; }
+  .chip.live{ background:var(--good-soft); border-color:transparent; color:var(--good); font-weight:600; }
+
+  /* ---------- buttons ---------- */
+  .btn{ font-family:inherit; font-size:12.5px; font-weight:600; border-radius:var(--radius-sm); padding:7px 14px; cursor:pointer; border:1px solid var(--border-strong); background:var(--surface); color:var(--ink); transition:border-color .12s, background .12s; }
+  .btn:hover{ border-color:var(--accent-ded); }
+  .btn:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
+  .btn.primary{ background:var(--accent-ded); border-color:var(--accent-ded); color:#fff; }
+  .btn.primary:hover{ filter:brightness(1.08); }
+  .btn.ghost{ border-color:transparent; background:transparent; color:var(--ink-muted); padding:7px 8px; }
+  .btn.ghost:hover{ color:var(--accent-ded); }
+
+  /* ---------- filter bar ---------- */
+  .filterbar{ position:sticky; top:0; z-index:30; background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .filterbar-inner{ max-width:1320px; margin:0 auto; padding:11px 24px; display:flex; flex-wrap:wrap; align-items:center; gap:9px 20px; }
+  .fgroup{ display:flex; align-items:center; gap:8px; }
+  .flabel{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); }
+  select.fselect{ appearance:none; -webkit-appearance:none; background:var(--surface); color:var(--ink); border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:6px 30px 6px 11px; font-size:13px; font-weight:500; font-family:inherit; cursor:pointer; max-width:340px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23526A6E'/></svg>"); background-repeat:no-repeat; background-position:right 11px center; }
+  select.fselect:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
+  .pillset{ display:flex; gap:6px; flex-wrap:wrap; }
+  .pill{ font-size:12.5px; font-weight:500; padding:6px 13px; border-radius:999px; border:1px solid var(--border-strong); background:var(--surface); color:var(--ink-muted); cursor:pointer; transition:background .12s,color .12s,border-color .12s; }
+  .pill:hover{ border-color:var(--accent-ded); }
+  .pill:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
+  .pill[aria-pressed="true"]{ background:var(--accent-ded); border-color:var(--accent-ded); color:#fff; }
+  .pill.ge[aria-pressed="true"]{ background:var(--accent-ge); border-color:var(--accent-ge); }
+  .fdivider{ width:1px; align-self:stretch; background:var(--border); }
+
+  /* ---------- data source panel ---------- */
+  .source-bar{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 18px; margin-top:16px; }
+  .source-bar.dragging{ border-color:var(--accent-ded); background:var(--accent-ded-soft); }
+  .source-main{ flex:1; min-width:260px; }
+  .source-title{ font-size:12.5px; font-weight:700; margin:0 0 3px; }
+  .source-desc{ font-size:12px; color:var(--ink-muted); margin:0; line-height:1.55; }
+  .source-desc code{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--surface-2); padding:1px 5px; border-radius:4px; }
+  .source-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .upload-status{ font-size:12px; color:var(--ink-muted); margin-top:8px; }
+  .upload-status.error{ color:var(--critical); }
+  .upload-status.ok{ color:var(--good); }
+
+  /* ---------- sections ---------- */
+  section.block{ margin-top:28px; }
+  .block-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:11px; flex-wrap:wrap; }
+  .block-head h2{ font-size:15px; font-weight:700; margin:0; }
+  .block-head .hint{ font-size:12px; color:var(--ink-faint); }
+  .head-tools{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .head-tools .pill{ padding:4px 11px; font-size:12px; }
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); }
+
+  /* ---------- KPI ---------- */
+  .kpi-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:1180px) and (min-width:921px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+  .kpi-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border-strong); border-radius:var(--radius-md); padding:15px 18px; box-shadow:var(--shadow); }
+  .kpi-card.state-good{ border-left-color:var(--good); }
+  .kpi-card.state-critical{ border-left-color:var(--critical); }
+  .kpi-card.state-watch{ border-left-color:var(--watch); }
+  .kpi-card.state-none{ border-left-color:var(--border-strong); }
+  .kpi-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .kpi-label{ font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); }
+  .kpi-badge{ font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .kpi-badge.good{ background:var(--good-soft); color:var(--good); }
+  .kpi-badge.critical{ background:var(--critical-soft); color:var(--critical); }
+  .kpi-badge.watch{ background:var(--watch-soft); color:var(--watch); }
+  .kpi-badge.none{ background:var(--surface-2); color:var(--ink-faint); }
+  .kpi-value{ font-size:30px; font-weight:600; margin:8px 0 1px; letter-spacing:-.01em; }
+  .kpi-value.pos{ color:var(--good); } .kpi-value.neg{ color:var(--critical); }
+  .kpi-value .unit{ font-size:13px; color:var(--ink-faint); font-family:'IBM Plex Sans',sans-serif; margin-left:3px; }
+  .kpi-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:2px; }
+  .kpi-meta{ display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--ink-muted); margin-top:7px; }
+  .gap-behind{ color:var(--critical); font-weight:600; }
+  .gap-ahead{ color:var(--good); font-weight:600; }
+  .yoy.up{ color:var(--good); font-weight:600; } .yoy.down{ color:var(--critical); font-weight:600; }
+  .progress{ height:6px; border-radius:99px; background:var(--surface-2); margin-top:10px; overflow:hidden; }
+  .progress > i{ display:block; height:100%; border-radius:99px; background:var(--accent-ded); }
+  .kpi-card.state-critical .progress > i{ background:var(--critical); }
+  .kpi-card.state-good .progress > i{ background:var(--good); }
+  .kpi-card.state-watch .progress > i{ background:var(--watch); }
+
+  /* ---------- charts ---------- */
+  .chart-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .chart-panel{ padding:15px 18px 12px; position:relative; }
+  .chart-panel h3{ font-size:12.5px; font-weight:700; margin:0 0 2px; }
+  .chart-scope{ font-size:11.5px; color:var(--ink-muted); margin:0 0 8px; }
+  .chart-holder{ position:relative; }
+  .chart-holder svg{ display:block; width:100%; height:auto; touch-action:none; }
+  .chart-tip{ position:absolute; pointer-events:none; opacity:0; transition:opacity .1s; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:var(--shadow); padding:8px 11px; font-size:11.5px; min-width:158px; z-index:5; }
+  .chart-tip .tip-title{ font-weight:700; font-size:12px; margin-bottom:5px; }
+  .chart-tip .tip-row{ display:flex; justify-content:space-between; gap:14px; color:var(--ink-muted); line-height:1.7; }
+  .chart-tip .tip-row b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  .legend-row{ display:flex; gap:15px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-muted); }
+  .legend-swatch{ width:15px; height:3px; border-radius:2px; flex-shrink:0; }
+  .legend-item .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend-swatch.dash{ background-image:repeating-linear-gradient(to right, currentColor 0 5px, transparent 5px 9px); }
+
+  /* ---------- tables ---------- */
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+  thead th{ text-align:left; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); padding:11px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  thead th.num, td.num{ text-align:right; }
+  tbody td{ padding:9px 14px; border-bottom:1px solid var(--border); }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover td{ background:var(--surface-2); }
+  td.name{ font-weight:500; }
+  .tag{ display:inline-block; font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:5px; }
+  .tag.ded{ background:var(--accent-ded-soft); color:var(--accent-ded); }
+  .tag.ge{ background:var(--accent-ge-soft); color:var(--accent-ge); }
+  .badge-row{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:3px 9px 3px 7px; border-radius:999px; white-space:nowrap; }
+  .badge-row.good{ background:var(--good-soft); color:var(--good); }
+  .badge-row.critical{ background:var(--critical-soft); color:var(--critical); }
+  .badge-row.watch{ background:var(--watch-soft); color:var(--watch); }
+  .badge-row.none{ background:var(--surface-2); color:var(--ink-faint); }
+  .badge-dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .growth.up{ color:var(--good); } .growth.down{ color:var(--critical); }
+  .cum-hit td{ background:var(--accent-ded-soft); }
+  .bar-cell{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .bar-track{ width:56px; height:6px; border-radius:99px; background:var(--surface-2); flex-shrink:0; }
+  .bar-fill{ height:100%; border-radius:99px; background:var(--accent-ded); }
+
+  /* ---------- customer / channel ---------- */
+  .cust-grid{ display:grid; grid-template-columns:1.55fr 1fr; gap:14px; align-items:start; }
+  .side-panel{ padding:15px 18px; }
+  .side-panel h3{ font-size:12.5px; font-weight:700; margin:0 0 12px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .panel-head h3{ margin:0; }
+  .panel-head .pill{ padding:3px 10px; font-size:11.5px; }
+  .chan-row{ display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+  .chan-row:last-child{ margin-bottom:0; }
+  .chan-label{ width:96px; font-size:12px; color:var(--ink-muted); flex-shrink:0; }
+  .chan-bar-track{ flex:1; height:16px; border-radius:5px; background:var(--surface-2); overflow:hidden; min-width:40px; }
+  .chan-bar-fill{ height:100%; background:var(--accent-ded); }
+  .chan-figs{ width:158px; text-align:right; font-size:11.5px; color:var(--ink-muted); flex-shrink:0; font-family:'IBM Plex Mono',monospace; }
+  .chan-figs .amt{ color:var(--ink); font-weight:600; font-size:12.5px; }
+  .callout{ font-size:12.5px; color:var(--ink-muted); background:var(--surface-2); border-radius:var(--radius-sm); padding:9px 13px; margin:0 0 13px; }
+  .callout b{ color:var(--ink); }
+  .empty-note{ font-size:12.5px; color:var(--ink-faint); padding:22px 14px; text-align:center; }
+  footer.note{ margin-top:38px; font-size:11.5px; color:var(--ink-faint); border-top:1px solid var(--border); padding-top:14px; line-height:1.7; }
+
+  @media (max-width:920px){
+    .kpi-grid,.chart-grid,.cust-grid{ grid-template-columns:1fr; }
+  }
+</style>
+
+<header class="app-header">
+  <div>
+    <p class="eyebrow">DEOH · Sales Dynamic Dashboard</p>
+    <h1>DEOH Sales Pulse</h1>
+    <p class="sub">DED（人工淚液）與 GE（青光眼）動態銷售儀表板</p>
+  </div>
+  <div class="head-right">
+    <span class="chip" id="sourceChip">示範資料</span>
+    <span class="chip">資料基準 <b id="setMonthChip">—</b></span>
+  </div>
+</header>
+
+<div class="filterbar">
+  <div class="filterbar-inner">
+    <div class="fgroup"><span class="flabel">Set Month</span><select id="setMonthSelect" class="fselect"></select></div>
+    <div class="fdivider"></div>
+    <div class="fgroup"><span class="flabel">類別</span><div class="pillset" id="categoryPills"></div></div>
+    <div class="fdivider" id="subcatDivider"></div>
+    <div class="fgroup" id="subcatGroup"><span class="flabel" id="subcatLabel">細項</span><div class="pillset" id="subcatPills"></div></div>
+    <div class="fdivider"></div>
+    <div class="fgroup"><span class="flabel">單品</span><select id="skuSelect" class="fselect"></select></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <div class="source-bar" id="sourceBar">
+    <div class="source-main">
+      <p class="source-title" id="sourceTitle">目前顯示：示範資料（不是你的實際出貨數字）</p>
+      <p class="source-desc" id="sourceDesc">
+        把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>，
+        會自動找出 <code>DED資料</code>、<code>GE資料</code>、<code>Target&amp;Sales</code> 三張表，整份儀表板即時重算。
+      </p>
+      <p class="upload-status" id="uploadStatus"></p>
+    </div>
+    <div class="source-actions">
+      <input type="file" id="fileInput" accept=".xlsx,.csv" multiple hidden />
+      <button class="btn primary" id="uploadBtn">上傳原始檔</button>
+      <button class="btn ghost" id="resetBtn" hidden>清除，回到示範資料</button>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="block-head"><h2>KPI 總覽 — 所選範圍</h2><span class="hint" id="scopeHint"></span></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>業績趨勢：全部產品 vs. 所選範圍</h2>
+      <div class="head-tools">
+        <div class="pillset" id="chartModePills"></div>
+        <span class="hint">滑鼠移到圖上可看每月明細</span>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="panel chart-panel">
+        <h3>全部產品 Total</h3>
+        <p class="chart-scope" id="scopeTotal">—</p>
+        <div class="chart-holder" id="holderTotal"></div>
+        <div class="legend-row" id="legendTotal"></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>所選範圍 Selected</h3>
+        <p class="chart-scope" id="scopeSelected">—</p>
+        <div class="chart-holder" id="holderSelected"></div>
+        <div class="legend-row" id="legendSelected"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h2>品項缺口與達成率矩陣</h2><span class="hint" id="gapScopeHint"></span></div>
+    <div class="panel table-scroll">
+      <table>
+        <thead><tr>
+          <th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>
+          <th class="num">YTD 目標</th><th class="num">缺口／超前</th><th class="num">達成率</th><th>狀態</th>
+        </tr></thead>
+        <tbody id="gapTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h2>客戶排名與通路分布 — 所選範圍</h2><span class="hint" id="custScopeHint"></span></div>
+    <div class="cust-grid">
+      <div class="panel side-panel">
+        <div class="panel-head">
+          <h3>Top 20 客戶／院所排行（YTD）</h3>
+          <div class="pillset" id="custSortPills"></div>
+        </div>
+        <p class="callout" id="top20Callout"></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="num">#</th><th>客戶名稱</th><th>通路別</th>
+              <th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">累計佔比</th>
+            </tr></thead>
+            <tbody id="custTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel side-panel">
+        <h3>通路佔比與成長</h3>
+        <div id="channelBars"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note" id="footNote"></footer>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+/* ==========================================================================
+   0. 資料格式（dataset）— 上傳檔解析後與 db 儲存都是這個形狀
+   --------------------------------------------------------------------------
+   {
+     v:1, kind:'demo'|'uploaded', updatedAt:ISO字串,
+     sources:[{name, sheet, rows}],
+     products:[[品項名稱, 'DED'|'GE']],           // 索引 = pi
+     customers:[[客戶名稱, 原始通路值]],           // 索引 = ci
+     facts:[[ci, pi, 年, 月, 金額]],               // 只存非零，客戶×品項×年月
+     targets:[[pi, 年, 月, 目標金額]]              // 可選；沒有就不算達成率
+   }
+   ========================================================================== */
+
+var LS_KEY = 'deoh-pulse-dataset-v1';
+
+/* -------------------- 品項分類（沿用 Excel 版的定義） -------------------- */
+var P2_NAMES = ['TEARS NATURALE II 15ML/20ML','TEARS NATURALE FREE 32S','DURATEARS OINTMENT 3.5GM'];
+var GE_NHI_NAMES = ['AZARGA 5ML-TPE','AZOPT 1% 5ML-TPE','IZBA 0.003% 2.5ML-TPE','DUOTRAV BAK-FREE 2.5ML-TPE','SIMBRINZA LDMO 10/2MG/ML LDPE 5ML (X) TW'];
+var GE_SELFPAY_NAMES = ['VIGAMOX 0.5% 5ML - TPE','NEVANAC 0.1% 5ML - TPE','PATANOL 0.1% 5ML-TPE'];
+var GROUP_LABEL = { P1:'P1 視舒坦系列', P2:'P2 淚膜系列', NHI:'健保 NHI', SELFPAY:'自費 Self-Pay', OTHER:'其他品項' };
+
+function normName(s){ return String(s||'').toUpperCase().replace(/[‐-―]/g,'-').replace(/\s+/g,' ').trim(); }
+var P2_SET = P2_NAMES.map(normName), NHI_SET = GE_NHI_NAMES.map(normName), SELF_SET = GE_SELFPAY_NAMES.map(normName);
+function groupOf(name, category){
+  var n = normName(name);
+  if (category === 'DED') return P2_SET.indexOf(n) >= 0 ? 'P2' : 'P1';
+  if (NHI_SET.indexOf(n) >= 0) return 'NHI';
+  if (SELF_SET.indexOf(n) >= 0) return 'SELFPAY';
+  return 'OTHER';
+}
+
+/* -------------------- 同院所不同送貨點合併（對應 Excel 版「使用說明 4e」） --------------------
+   同一個實體院所因為部門／藥庫拆成好幾個客戶名稱時，報表層合併成一個客戶一起看；
+   不同分院／院區（員山、蘇澳、關渡…）維持分開，因為那是真的不同地點。
+   這裡用「通則」而不是寫死的客戶名單，所以同事的資料一樣適用，程式碼裡也不會出現任何客戶名稱：
+     ① 去掉「…醫療／學校財團法人」這類法人前綴
+     ② 去掉結尾的送貨點字樣（藥庫、藥品庫、手術室、開刀房、資材室、眼科部…）
+   實測可完整重現 Excel 版的合併結果（臺北榮總、振興、輔大附醫、三重、蘭陽院區），
+   且不會誤併員山分院／蘇澳分院／關渡醫院這些真正不同的地點。                              */
+var DEPT_SUFFIX_RE = /(藥品庫|藥庫|藥劑科|藥劑部|手術室|開刀房|資材室|眼科行政作業區|眼科部|門診藥局)\s*(\(醫材\)|（醫材）)?\s*$/;
+function customerGroupName(raw){
+  var n = String(raw == null ? '' : raw).replace(/[\s　]+/g, ' ').trim();
+  var legal = n.indexOf('財團法人');
+  if (legal >= 0) n = n.slice(legal + 4).trim();
+  var prev = null;
+  while (prev !== n){
+    prev = n;
+    n = n.replace(DEPT_SUFFIX_RE, '').trim().replace(/[－\-—–]\s*$/, '').trim();
+  }
+  return n || String(raw || '').trim();
+}
+
+/* -------------------- 通路分類（沿用 Excel 版的對應表） -------------------- */
+var CHANNELS = [
+  { id:'Hospital',    label:'醫院' },
+  { id:'Clinic',      label:'診所（含門前藥局）' },
+  { id:'Independent', label:'獨立藥局' },
+  { id:'Chain',       label:'其他連鎖藥局' },
+  { id:'Other',       label:'其他／未分類' }
+];
+var CHANNEL_LABEL = {}; CHANNELS.forEach(function(c){ CHANNEL_LABEL[c.id] = c.label; });
+var CHANNEL_SHORT = { Hospital:'醫院', Clinic:'診所', Independent:'獨立藥局', Chain:'連鎖藥局', Other:'未分類' };
+function channelOf(raw){
+  var v = String(raw||'').trim();
+  if (v === 'Medical Facility' || v === 'HP') return 'Hospital';
+  if (v === 'Diagnostic Facility' || v === 'Retail' || v === 'GP' || v === 'P1') return 'Clinic';
+  if (v === 'Pharmacy Independent' || v === 'DS' || v === 'T1') return 'Independent';
+  if (v === 'Pharmacy Retail') return 'Chain';
+  if (CHANNEL_LABEL[v]) return v;   // 已經是內部代碼（示範資料）
+  return 'Other';
+}
+
+/* ==========================================================================
+   1. 示範資料（清楚標示為示範，不是真實出貨數字）
+   ========================================================================== */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildDemoDataset(){
+  var rnd = mulberry32(20260905);
+  var DEMO_PRODUCTS = [
+    ['SYSTANE HA UNITDOSE 30CT','DED',640,0.06], ['SYSTANE COMPLETE 10ML','DED',810,0.09],
+    ['SYSTANE ULTRA 10ML','DED',960,0.04], ['SYSTANE ULTRA UNIT DOSE 30 CT','DED',520,0.03],
+    ['SYSTANE HA MULTIDOSE 10ML','DED',470,0.07], ['SYSTANE HA MDPF 10ML','DED',95,0.65],
+    ['SYSTANE ULTRA MDPF 10ML','DED',80,0.72], ['SYSTANE ULTRA UNIT DOSE 24/25 CT','DED',300,-0.02],
+    ['SYSTANE COMPLETE 5ML','DED',260,0.05], ['SYSTANE BALANCE 10ML','DED',340,-0.97],
+    ['SYSTANE HA UNIT DOSE 5CT','DED',150,0.02], ['TEARS NATURALE II 15ML/20ML','DED',210,-0.05],
+    ['TEARS NATURALE FREE 32S','DED',130,-0.03], ['DURATEARS OINTMENT 3.5GM','DED',175,0.01],
+    ['AZARGA 5ML-TPE','GE',560,0.05], ['AZOPT 1% 5ML-TPE','GE',300,-0.06],
+    ['IZBA 0.003% 2.5ML-TPE','GE',190,0.11], ['DUOTRAV BAK-FREE 2.5ML-TPE','GE',260,0.02],
+    ['SIMBRINZA LDMO 10/2MG/ML LDPE 5ML (X) TW','GE',340,0.14], ['VIGAMOX 0.5% 5ML - TPE','GE',220,0.08],
+    ['NEVANAC 0.1% 5ML - TPE','GE',150,-0.04], ['PATANOL 0.1% 5ML-TPE','GE',110,-0.09],
+    ['TRAVATAN BAK-FREE 2.5ML-TPE','GE',90,0.03]
+  ];
+  var SEASON = [0.90,0.88,1.02,0.98,1.05,1.03,0.92,0.97,1.04,1.10,1.08,1.15];
+  var CUR_M = 8, Y1 = 2025, Y2 = 2026;
+
+  // 單一客戶池 → 同一個客戶只會有一個名字，不會在 DED / GE 各出現一次（前一版的 bug）
+  var PLACE = ['仁愛','康寧','博愛','永和','雙和','士林','北投','內湖','南港','三重','蘆洲','新莊','中和','新店','土城','樹林','汐止','林口','淡水','竹北','豐原','員林','斗六','朴子','佳里','岡山','鳳山','潮州','花蓮','台東','宜蘭','基隆','大安','松山','中山','信義','和平','文山'];
+  var SUFFIX = { Hospital:'醫院', Clinic:'眼科診所', Independent:'藥局', Chain:'聯合連鎖藥局' };
+  var WEIGHTS = [['Clinic',.44],['Hospital',.26],['Independent',.18],['Chain',.12]];
+  var customers = [], usedNames = {};
+  for (var i = 0; i < PLACE.length; i++){
+    var r = rnd(), acc = 0, chan = 'Clinic';
+    for (var w = 0; w < WEIGHTS.length; w++){ acc += WEIGHTS[w][1]; if (r <= acc){ chan = WEIGHTS[w][0]; break; } }
+    var nm = '（示範）' + PLACE[i] + SUFFIX[chan];
+    if (usedNames[nm]) continue;
+    usedNames[nm] = 1;
+    customers.push([nm, chan]);
+  }
+
+  var products = DEMO_PRODUCTS.map(function(p){ return [p[0], p[1]]; });
+  var facts = [], targets = [];
+
+  DEMO_PRODUCTS.forEach(function(p, pi){
+    var base = p[2], trend = p[3];
+    var monthTotals = {};
+    for (var m = 1; m <= 12; m++){
+      var s25 = Math.round(base * SEASON[m-1] * (0.88 + rnd()*0.28)) * 1000;
+      var tf  = (p[0] === 'SYSTANE BALANCE 10ML' && m >= 3) ? 0.03 : (1 + trend);
+      var s26 = Math.round(base * SEASON[m-1] * tf * (0.88 + rnd()*0.28)) * 1000;
+      monthTotals[Y1 + '-' + m] = s25;
+      if (m <= CUR_M) monthTotals[Y2 + '-' + m] = s26;
+      targets.push([pi, Y2, m, Math.round(base * SEASON[m-1] * (1 + Math.max(trend, 0.02)) * 1000)]);
+    }
+    // 每個品項只有一部分客戶會買，且金額集中在少數大客戶（冪次分布）
+    var eligible = customers.map(function(c, ci){ return ci; }).filter(function(){ return rnd() < (p[1] === 'GE' ? 0.5 : 0.62); });
+    if (!eligible.length) eligible = [0];
+    var weights = eligible.map(function(){ return Math.pow(rnd(), 2.1) + 0.02; });
+    var wsum = weights.reduce(function(a,b){ return a+b; }, 0);
+    Object.keys(monthTotals).forEach(function(key){
+      var parts = key.split('-'), yy = +parts[0], mm = +parts[1], total = monthTotals[key];
+      eligible.forEach(function(ci, k){
+        var amt = Math.round(total * weights[k] / wsum);
+        if (amt > 0) facts.push([ci, pi, yy, mm, amt]);
+      });
+    });
+  });
+
+  return {
+    v:1, kind:'demo', updatedAt:new Date().toISOString(),
+    sources:[{ name:'內建示範資料', sheet:'—', rows:facts.length }],
+    products: products, customers: customers, facts: facts, targets: targets
+  };
+}
+
+/* ==========================================================================
+   2. 檔案讀取：.xlsx（純 JS 解 ZIP + 內建 DecompressionStream，不需外部函式庫）
+      與 .csv
+   ========================================================================== */
+function findEOCD(dv, len){
+  var max = Math.min(len, 66000);
+  for (var i = len - 22; i >= len - max && i >= 0; i--){
+    if (dv.getUint32(i, true) === 0x06054b50) return i;
+  }
+  return -1;
+}
+
+function openZip(buf){
+  var u8 = new Uint8Array(buf), dv = new DataView(buf);
+  var eocd = findEOCD(dv, u8.length);
+  if (eocd < 0) throw new Error('這個檔案看起來不是 .xlsx（找不到 ZIP 結構）');
+  var count = dv.getUint16(eocd + 10, true);
+  var cdOff = dv.getUint32(eocd + 16, true);
+  if (cdOff === 0xFFFFFFFF || count === 0xFFFF){
+    // ZIP64：往前找 ZIP64 EOCD locator
+    var loc = eocd - 20;
+    if (loc >= 0 && dv.getUint32(loc, true) === 0x07064b50){
+      var z64 = Number(dv.getBigUint64(loc + 8, true));
+      count = Number(dv.getBigUint64(z64 + 32, true));
+      cdOff = Number(dv.getBigUint64(z64 + 48, true));
+    }
+  }
+  var entries = {}, p = cdOff, dec = new TextDecoder();
+  for (var n = 0; n < count; n++){
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    var method = dv.getUint16(p + 10, true);
+    var compSize = dv.getUint32(p + 20, true);
+    var nameLen = dv.getUint16(p + 28, true);
+    var extraLen = dv.getUint16(p + 30, true);
+    var cmtLen = dv.getUint16(p + 32, true);
+    var localOff = dv.getUint32(p + 42, true);
+    var name = dec.decode(u8.subarray(p + 46, p + 46 + nameLen));
+    if (compSize === 0xFFFFFFFF || localOff === 0xFFFFFFFF){
+      // ZIP64 extra field（0x0001）
+      var ex = p + 46 + nameLen, exEnd = ex + extraLen;
+      while (ex + 4 <= exEnd){
+        var hid = dv.getUint16(ex, true), hsz = dv.getUint16(ex + 2, true), q = ex + 4;
+        if (hid === 0x0001){
+          q += 8;                                   // uncompressed size
+          if (compSize === 0xFFFFFFFF){ compSize = Number(dv.getBigUint64(q, true)); q += 8; }
+          if (localOff === 0xFFFFFFFF){ localOff = Number(dv.getBigUint64(q, true)); }
+        }
+        ex += 4 + hsz;
+      }
+    }
+    entries[name] = { method:method, compSize:compSize, localOff:localOff };
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  return { u8:u8, dv:dv, entries:entries };
+}
+
+async function zipText(zip, name){
+  var e = zip.entries[name];
+  if (!e) return null;
+  var lo = e.localOff;
+  if (zip.dv.getUint32(lo, true) !== 0x04034b50) throw new Error('ZIP 內部結構異常');
+  var nameLen = zip.dv.getUint16(lo + 26, true), extraLen = zip.dv.getUint16(lo + 28, true);
+  var start = lo + 30 + nameLen + extraLen;
+  var raw = zip.u8.subarray(start, start + e.compSize);
+  if (e.method === 0) return new TextDecoder().decode(raw);
+  if (e.method === 8){
+    if (typeof DecompressionStream === 'undefined') throw new Error('這個瀏覽器不支援內建解壓縮，請改用 .csv 上傳');
+    var stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(stream).text();
+  }
+  throw new Error('不支援的 ZIP 壓縮方式（' + e.method + '）');
+}
+
+function xmlUnescape(s){
+  if (s.indexOf('&') < 0) return s;
+  return s.replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/g, function(m, g){
+    if (g === 'amp') return '&'; if (g === 'lt') return '<'; if (g === 'gt') return '>';
+    if (g === 'quot') return '"'; if (g === 'apos') return "'";
+    return g[1] === 'x' || g[1] === 'X' ? String.fromCodePoint(parseInt(g.slice(2), 16)) : String.fromCodePoint(parseInt(g.slice(1), 10));
+  });
+}
+function colIndex(ref){
+  var n = 0;
+  for (var i = 0; i < ref.length; i++){
+    var c = ref.charCodeAt(i);
+    if (c >= 65 && c <= 90) n = n * 26 + (c - 64); else break;
+  }
+  return n - 1;
+}
+function parseSharedStrings(xml){
+  if (!xml) return [];
+  var out = [], re = /<si\b[^>]*>([\s\S]*?)<\/si>/g, m;
+  while ((m = re.exec(xml))){
+    var txt = '', tre = /<t\b[^>]*>([\s\S]*?)<\/t>/g, tm;
+    while ((tm = tre.exec(m[1]))) txt += tm[1];
+    out.push(xmlUnescape(txt));
+  }
+  return out;
+}
+/** 逐列掃描 worksheet XML；keepCols 為 null 時全收，否則只保留指定欄位（省記憶體）。 */
+function parseSheetXml(xml, sst, onRow){
+  var rowRe = /<row\b[^>]*(?:\/>|>([\s\S]*?)<\/row>)/g, rm, rowNo = 0;
+  while ((rm = rowRe.exec(xml))){
+    rowNo++;
+    var inner = rm[1] || '', cells = [];
+    var cRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, cm;
+    while ((cm = cRe.exec(inner))){
+      var attrs = cm[1] || '', body = cm[2] || '';
+      var rMatch = /r="([A-Z]+)\d+"/.exec(attrs);
+      var idx = rMatch ? colIndex(rMatch[1]) : cells.length;
+      var tMatch = /t="([^"]+)"/.exec(attrs);
+      var type = tMatch ? tMatch[1] : 'n', val = '';
+      if (type === 'inlineStr'){
+        var tt = /<t\b[^>]*>([\s\S]*?)<\/t>/.exec(body);
+        val = tt ? xmlUnescape(tt[1]) : '';
+      } else {
+        var vv = /<v>([\s\S]*?)<\/v>/.exec(body);
+        val = vv ? xmlUnescape(vv[1]) : '';
+        if (type === 's') val = sst[+val] != null ? sst[+val] : '';
+      }
+      cells[idx] = val;
+    }
+    if (onRow(cells, rowNo) === false) return;
+  }
+}
+
+async function readWorkbook(file, onProgress){
+  var buf = await file.arrayBuffer();
+  var zip = openZip(buf);
+  var wbXml = await zipText(zip, 'xl/workbook.xml');
+  var relsXml = await zipText(zip, 'xl/_rels/workbook.xml.rels');
+  if (!wbXml) throw new Error('找不到 xl/workbook.xml，這可能不是 Excel 檔');
+  var rels = {}, rre = /<Relationship\b([^>]*)\/>/g, rm;
+  while ((rm = rre.exec(relsXml || ''))){
+    var id = /Id="([^"]+)"/.exec(rm[1]), tgt = /Target="([^"]+)"/.exec(rm[1]);
+    if (id && tgt) rels[id[1]] = tgt[1].replace(/^\/?xl\//, '').replace(/^\//, '');
+  }
+  var sheets = [], sre = /<sheet\b([^>]*)\/>/g, sm;
+  while ((sm = sre.exec(wbXml))){
+    var nm = /name="([^"]*)"/.exec(sm[1]), rid = /r:id="([^"]+)"/.exec(sm[1]);
+    if (nm && rid && rels[rid[1]]) sheets.push({ name: xmlUnescape(nm[1]), path: 'xl/' + rels[rid[1]] });
+  }
+  var sst = parseSharedStrings(await zipText(zip, 'xl/sharedStrings.xml'));
+  return {
+    sheetNames: sheets.map(function(s){ return s.name; }),
+    readSheet: async function(name, onRow){
+      var s = sheets.filter(function(x){ return x.name === name; })[0];
+      if (!s) return false;
+      if (onProgress) onProgress('讀取「' + name + '」…');
+      var xml = await zipText(zip, s.path);
+      if (!xml) return false;
+      parseSheetXml(xml, sst, onRow);
+      return true;
+    }
+  };
+}
+
+function parseCsv(text){
+  var rows = [], row = [], cur = '', q = false;
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  for (var i = 0; i < text.length; i++){
+    var ch = text[i];
+    if (q){
+      if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ','){ row.push(cur); cur = ''; }
+    else if (ch === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (ch !== '\r') cur += ch;
+  }
+  if (cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+/* ==========================================================================
+   3. 原始表 → dataset
+   ========================================================================== */
+function headerIndex(header, names){
+  var hit = [];
+  header.forEach(function(h, i){ if (names.indexOf(String(h||'').trim()) >= 0) hit.push(i); });
+  return hit;
+}
+function detectSheetKind(header){
+  var h = header.map(function(x){ return String(x||'').trim(); });
+  var has = function(n){ return h.indexOf(n) >= 0; };
+  if (has('診所名稱') && has('品項')) return 'DED';
+  if (has('Customer Name') && has('Item Description')) return 'GE';
+  return null;
+}
+function monthKeyFrom(row, idx){
+  // 依序嘗試：月/Month(202601) → Sales Period → 年+Period → 日期字串
+  var mk = String(row[idx.mk] != null ? row[idx.mk] : '').trim();
+  if (/^\d{6}$/.test(mk)) return [ +mk.slice(0,4), +mk.slice(4) ];
+  if (idx.year >= 0 && idx.period >= 0){
+    var y = String(row[idx.year] || '').trim(), pd = String(row[idx.period] || '').trim();
+    if (/^\d{4}$/.test(y) && /^\d{1,2}$/.test(pd)) return [ +y, +pd ];
+  }
+  if (idx.date >= 0){
+    var d = String(row[idx.date] || '').trim();
+    var m1 = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(d);        // 02.01.2025 (DD.MM.YYYY)
+    if (m1) return [ +m1[3], +m1[2] ];
+    var m2 = /^(\d{4})(\d{2})(\d{2})$/.exec(d);            // 20250107
+    if (m2) return [ +m2[1], +m2[2] ];
+    var m3 = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/.exec(d);
+    if (m3) return [ +m3[1], +m3[2] ];
+  }
+  return null;
+}
+
+function makeCollector(){
+  var prodIdx = {}, custIdx = {}, products = [], customers = [], agg = {}, targets = [], byNorm = {}, yearsSeen = {};
+  return {
+    products: products, customers: customers, targets: targets,
+    /** 依「正規化後的品項名稱」找既有品項（處理全形/半形破折號、大小寫、空白差異） */
+    findPi: function(name){ var k = normName(name); return byNorm[k] == null ? -1 : byNorm[k]; },
+    pi: function(name, category){
+      var key = name + '||' + category;
+      if (prodIdx[key] == null){
+        prodIdx[key] = products.length;
+        if (byNorm[normName(name)] == null) byNorm[normName(name)] = products.length;
+        products.push([name, category]);
+      }
+      return prodIdx[key];
+    },
+    ci: function(name, rawChan){
+      var key = customerGroupName(name);   // 同院所不同送貨點在這裡合併成一個客戶
+      if (custIdx[key] == null){ custIdx[key] = customers.length; customers.push([key, channelOf(rawChan)]); }
+      return custIdx[key];
+    },
+    add: function(ci, pi, y, m, amt){
+      var k = ci + '|' + pi + '|' + y + '|' + m;
+      agg[k] = (agg[k] || 0) + amt;
+      yearsSeen[y] = 1;
+    },
+    peekYears: function(){ return Object.keys(yearsSeen).map(Number); },
+    finish: function(){
+      var facts = [];
+      Object.keys(agg).forEach(function(k){
+        var v = Math.round(agg[k]);
+        if (!v) return;
+        var p = k.split('|');
+        facts.push([ +p[0], +p[1], +p[2], +p[3], v ]);
+      });
+      return facts;
+    }
+  };
+}
+
+function ingestSalesRows(kind, header, rowIter, col){
+  var h = header.map(function(x){ return String(x||'').trim(); });
+  var idx;
+  if (kind === 'DED'){
+    var chanCols = headerIndex(h, ['Customer classification']);
+    // 金額欄固定用「Sales」：已逐品項對過 Monthly Report 的「2026 Sales」，到個位數相符。
+    // 「Invoice Sales」是開票金額（略高、未扣折讓），只有在檔案沒有 Sales 欄時才退而求其次。
+    var amtCol = h.indexOf('Sales');
+    if (amtCol < 0) amtCol = h.indexOf('Invoice Sales');
+    idx = {
+      cust: h.indexOf('診所名稱'), prod: h.indexOf('品項'), amt: amtCol,
+      chan: chanCols.length ? chanCols[chanCols.length - 1] : -1,   // 兩欄同名，文字那欄在後面
+      mk: h.indexOf('月'), year: h.indexOf('年'), period: -1, date: h.indexOf('Billing doc. date')
+    };
+  } else {
+    idx = {
+      cust: h.indexOf('Customer Name'), prod: h.indexOf('Item Description'), amt: h.indexOf('Net Sales Amount'),
+      chan: h.indexOf('Customer Channel'),
+      mk: h.indexOf('Month') >= 0 ? h.indexOf('Month') : h.indexOf('Sales Period'),
+      year: h.indexOf('Year'), period: h.indexOf('Period'), date: h.indexOf('Transaction Date')
+    };
+  }
+  if (idx.cust < 0 || idx.prod < 0 || idx.amt < 0) throw new Error('「' + kind + '」表缺少必要欄位（客戶／品項／金額）');
+  var used = 0, skipped = 0, scanned = 0;
+  rowIter(function(row){
+    scanned++;
+    var ym = monthKeyFrom(row, idx);
+    if (!ym){ skipped++; return; }
+    var amt = parseFloat(String(row[idx.amt] != null ? row[idx.amt] : '').replace(/,/g, ''));
+    if (!isFinite(amt) || amt === 0){ skipped++; return; }
+    var pname = String(row[idx.prod] || '').trim();
+    var cname = String(row[idx.cust] || '').trim();
+    if (!pname || !cname){ skipped++; return; }
+    col.add(col.ci(cname, idx.chan >= 0 ? row[idx.chan] : ''), col.pi(pname, kind), ym[0], ym[1], amt);
+    used++;
+  });
+  return { used:used, skipped:skipped, scanned:scanned };
+}
+
+/** 儀表板檔（DEOH_銷售動態儀表板）的 Product_Monthly 分頁：
+    第 2 列有「2025 Sales (實際)」「2026 Target (目標)」兩個區塊標籤，
+    第 3 列是 Product / Source / 1..12 / 1..12，第 4 列起是每個品項。
+    只讀「Target」那個區塊（實績一律以 DED資料／GE資料 原始明細為準，避免重複計算）。 */
+function ingestProductMonthlySheet(rows, col, curYear){
+  var hdrRow = -1;
+  for (var r = 0; r < Math.min(rows.length, 12); r++){
+    var a = String((rows[r] || [])[0] || '').trim().toLowerCase();
+    var b = String((rows[r] || [])[1] || '').trim().toLowerCase();
+    if (a === 'product' && b === 'source'){ hdrRow = r; break; }
+  }
+  if (hdrRow < 0) return 0;
+  var labelRow = rows[hdrRow - 1] || [];
+  var targetStart = -1, targetYear = curYear;
+  labelRow.forEach(function(v, i){
+    var s = String(v || '');
+    if (targetStart < 0 && /target|目標/i.test(s)){
+      targetStart = i;
+      var y = /(20\d{2})/.exec(s);
+      if (y) targetYear = +y[1];
+    }
+  });
+  if (targetStart < 0) return 0;
+  // 從標籤欄位開始，往右找 12 個月份欄（表頭是 1..12）
+  var hdr = rows[hdrRow] || [], monthCols = [];
+  for (var c = targetStart; c < hdr.length && monthCols.length < 12; c++){
+    var m = parseInt(String(hdr[c] || '').trim(), 10);
+    if (m >= 1 && m <= 12) monthCols.push([c, m]);
+  }
+  if (monthCols.length < 6) return 0;
+  var n = 0, hasSales = col.products.length > 0;
+  for (var i = hdrRow + 1; i < rows.length; i++){
+    var row = rows[i] || [];
+    var name = String(row[0] || '').trim();
+    var src = String(row[1] || '').trim().toUpperCase();
+    if (!name || (src !== 'DED' && src !== 'GE')) continue;
+    // 這張表除了品項，還有「DED ALL」「GE(NVS) ALL」「P1 視舒坦系列 Systane ALL」等
+    // 小計列，Source 欄一樣寫 DED/GE，照單全收會讓目標被重複加 2~3 倍（達成率被稀釋成 1/3）。
+    var pi = col.findPi(name);
+    if (pi < 0){
+      if (hasSales || AGG_ROW_RE.test(name)) continue;
+      pi = col.pi(name, src);
+    }
+    monthCols.forEach(function(mc){
+      var v = parseFloat(String(row[mc[0]] != null ? row[mc[0]] : '').replace(/,/g, '').trim());
+      if (!isFinite(v) || v <= 0) return;
+      col.targets.push([pi, targetYear, mc[1], Math.round(v)]);
+      n++;
+    });
+  }
+  return n;
+}
+
+/** 這一列是不是彙總列（DED ALL / NVS ALL / Priority 1… / ALL / 小計 等），不是真正的品項 */
+var AGG_ROW_RE = /(^|\s)(all|total|subtotal|priority\s*\d*)(\s|$)|合計|總計|小計|全部/i;
+
+/** Target&Sales 矩陣表：找出 202601… 月份標題列，取「Target」區塊的每月目標。 */
+function ingestTargetSheet(rows, col){
+  var hdrRow = -1, monthCols = [];
+  for (var r = 0; r < Math.min(rows.length, 12); r++){
+    var hits = [];
+    (rows[r] || []).forEach(function(v, i){ if (/^\d{6}$/.test(String(v||'').trim())) hits.push([i, String(v).trim()]); });
+    if (hits.length >= 6){ hdrRow = r; monthCols = hits; break; }
+  }
+  if (hdrRow < 0) return 0;
+  // 標題列下一列標出區塊：含 "Target" 的欄位起算為目標區，含 "Sales" 的為去年實績區
+  var labelRow = rows[hdrRow + 1] || [], targetStart = -1, salesStart = -1;
+  labelRow.forEach(function(v, i){
+    var s = String(v||'');
+    if (/target/i.test(s) && targetStart < 0) targetStart = i;
+    if (/sales/i.test(s) && salesStart < 0) salesStart = i;
+  });
+  if (targetStart < 0) targetStart = monthCols[0][0];
+  var targetCols = monthCols.filter(function(mc){
+    return mc[0] >= targetStart && (salesStart < 0 || mc[0] < salesStart);
+  });
+  if (!targetCols.length) return 0;
+  var n = 0, skippedAgg = 0;
+  var hasSales = col.products.length > 0;
+  for (var i = hdrRow + 2; i < rows.length; i++){
+    var row = rows[i] || [];
+    var name = String(row[0] || '').trim();
+    if (!name) continue;
+    // 目標表裡除了品項，還有 DED ALL / NVS ALL / Priority 1… / ALL 這些彙總列，
+    // 如果照收會把目標重複加好幾遍（達成率會被稀釋成 1/3）。
+    // 有銷售資料時：只認得出現在原始銷售資料裡的品項；沒有銷售資料時：用關鍵字排除彙總列。
+    var pi = col.findPi(name);
+    if (pi < 0){
+      if (hasSales || AGG_ROW_RE.test(name)){ skippedAgg++; continue; }
+      pi = col.pi(name, /SYSTANE|TEARS|DURATEARS/i.test(name) ? 'DED' : 'GE');
+    }
+    targetCols.forEach(function(mc){
+      var raw = String(row[mc[0]] != null ? row[mc[0]] : '').replace(/,/g, '').trim();
+      var v = parseFloat(raw);
+      if (!isFinite(v) || v <= 0) return;
+      col.targets.push([pi, +mc[1].slice(0,4), +mc[1].slice(4), Math.round(v)]);
+      n++;
+    });
+  }
+  return n;
+}
+
+async function buildDatasetFromFiles(files, onProgress){
+  var col = makeCollector(), sources = [], totalUsed = 0, targetCount = 0;
+  var pendingTargets = [];   // 目標表要等所有銷售資料都讀完才處理（才對得到品項）
+
+  for (var f = 0; f < files.length; f++){
+    var file = files[f];
+    onProgress('讀取 ' + file.name + '…');
+    if (/\.csv$/i.test(file.name)){
+      var rows = parseCsv(await file.text());
+      if (!rows.length) continue;
+      var kind = detectSheetKind(rows[0]);
+      if (kind){
+        var res = ingestSalesRows(kind, rows[0], function(cb){ for (var i = 1; i < rows.length; i++) cb(rows[i]); }, col);
+        sources.push({ name:file.name, sheet:kind, rows:res.used, scanned:res.scanned }); totalUsed += res.used;
+      } else {
+        pendingTargets.push({ name:file.name, sheet:'Target', rows:rows });
+      }
+      continue;
+    }
+    var wb = await readWorkbook(file, onProgress);
+    var matched = 0;
+    for (var s = 0; s < wb.sheetNames.length; s++){
+      var sname = wb.sheetNames[s];
+      // 目標可能來自：Monthly Report 的「Target&Sales」，或儀表板檔的「Product_Monthly」
+      var isTarget = /target/i.test(sname) || sname === 'Product_Monthly';
+      if (!/^(DED資料|GE資料)$/.test(sname) && !isTarget) continue;
+      if (isTarget){
+        var trows = [];
+        await wb.readSheet(sname, function(cells){ trows.push(cells); });
+        pendingTargets.push({ name:file.name, sheet:sname, rows:trows });
+        matched++;
+        continue;
+      }
+      var header = null, buffered = [];
+      await wb.readSheet(sname, function(cells, rowNo){
+        if (rowNo === 1){ header = cells; return; }
+        buffered.push(cells);
+      });
+      if (!header) continue;
+      var k = detectSheetKind(header) || (sname === 'DED資料' ? 'DED' : 'GE');
+      var r2 = ingestSalesRows(k, header, function(cb){ buffered.forEach(cb); }, col);
+      sources.push({ name:file.name, sheet:sname, rows:r2.used, scanned:r2.scanned });
+      totalUsed += r2.used; matched++;
+    }
+    if (!matched) throw new Error('「' + file.name + '」裡找不到 DED資料 / GE資料 / Target&Sales 這幾張表');
+  }
+
+  // 目標表最後才處理：這時候品項清單已經由銷售明細建立好，才對得起來、也才能排掉彙總列
+  var curYearGuess = 0;
+  col.peekYears().forEach(function(y){ if (y > curYearGuess) curYearGuess = y; });
+  pendingTargets.forEach(function(t){
+    var n = t.sheet === 'Product_Monthly'
+      ? ingestProductMonthlySheet(t.rows, col, curYearGuess || new Date().getFullYear())
+      : ingestTargetSheet(t.rows, col);
+    if (n){ sources.push({ name:t.name, sheet:t.sheet, rows:n, kind:'target' }); targetCount += n; }
+  });
+  if (!totalUsed && !targetCount) throw new Error('沒有讀到任何可用的資料列');
+
+  return {
+    v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
+    products: col.products, customers: col.customers, facts: col.finish(), targets: col.targets
+  };
+}
+
+/* ==========================================================================
+   4. 索引 + 純計算函式
+   ========================================================================== */
+var DATA = null;      // 目前使用中的 dataset
+var IDX = null;       // 由 dataset 推導出來的索引
+
+function buildIndex(ds){
+  var years = {};
+  ds.facts.forEach(function(f){ years[f[2]] = 1; });
+  ds.targets.forEach(function(t){ years[t[1]] = 1; });
+  var yearList = Object.keys(years).map(Number).sort(function(a,b){ return a-b; });
+  var curYear = yearList.length ? yearList[yearList.length-1] : new Date().getFullYear();
+  var priorYear = curYear - 1;
+
+  var products = ds.products.map(function(p, i){
+    return { i:i, name:p[0], category:p[1], group: groupOf(p[0], p[1]), groupLabel: GROUP_LABEL[groupOf(p[0], p[1])] };
+  });
+  var customers = ds.customers.map(function(c, i){ return { i:i, name:c[0], channel: channelOf(c[1]) }; });
+
+  var zeros = function(){ return [0,0,0,0,0,0,0,0,0,0,0,0]; };
+  var prodMonthly = products.map(function(){ return { cur:zeros(), prior:zeros() }; });
+  var prodTarget  = products.map(function(){ return zeros(); });
+  var latestMonth = 0;
+  ds.facts.forEach(function(f){
+    var pi = f[1], y = f[2], m = f[4] != null ? f[3] : f[3], amt = f[4];
+    if (!prodMonthly[pi] || m < 1 || m > 12) return;
+    if (y === curYear){ prodMonthly[pi].cur[m-1] += amt; if (amt) latestMonth = Math.max(latestMonth, m); }
+    else if (y === priorYear){ prodMonthly[pi].prior[m-1] += amt; }
+  });
+  ds.targets.forEach(function(t){
+    var pi = t[0], y = t[1], m = t[2];
+    if (prodTarget[pi] && y === curYear && m >= 1 && m <= 12) prodTarget[pi][m-1] += t[3];
+  });
+  if (!latestMonth) latestMonth = 12;
+
+  return {
+    curYear:curYear, priorYear:priorYear, products:products, customers:customers,
+    prodMonthly:prodMonthly, prodTarget:prodTarget, latestMonth:latestMonth,
+    hasTargets: ds.targets.length > 0
+  };
+}
+
+function sumMonths(arr, m1, m2){ var s = 0; for (var m = m1; m <= m2; m++) s += arr[m-1] || 0; return s; }
+
+function periodStats(pids, m1, m2){
+  var actual = 0, prior = 0, target = 0;
+  pids.forEach(function(pi){
+    actual += sumMonths(IDX.prodMonthly[pi].cur, m1, m2);
+    prior  += sumMonths(IDX.prodMonthly[pi].prior, m1, m2);
+    target += sumMonths(IDX.prodTarget[pi], m1, m2);
+  });
+  var hasTarget = IDX.hasTargets && target > 0;
+  return {
+    actual:actual, prior:prior, target: hasTarget ? target : null,
+    gap: hasTarget ? target - actual : null,
+    achievement: hasTarget ? actual / target : null,
+    yoy: prior ? actual / prior - 1 : null
+  };
+}
+function quarterStart(m){ return Math.floor((m-1)/3)*3 + 1; }
+function stateFor(a){ if (a == null) return 'none'; if (a >= 1) return 'good'; if (a < 0.9) return 'critical'; return 'watch'; }
+
+function trendSeries(pids, setMonth){
+  var prior = [], target = [], actual = [];
+  for (var m = 1; m <= 12; m++){
+    var p = 0, t = 0, a = 0;
+    pids.forEach(function(pi){
+      p += IDX.prodMonthly[pi].prior[m-1] || 0;
+      t += IDX.prodTarget[pi][m-1] || 0;
+      a += IDX.prodMonthly[pi].cur[m-1] || 0;
+    });
+    prior.push(p);
+    // 目標為 0 視同「還沒給目標」→ 線就在那裡停住，而不是掉到 0（會誤以為目標歸零）
+    target.push(IDX.hasTargets && t > 0 ? t : null);
+    actual.push(m <= setMonth ? a : null);
+  }
+  return { prior:prior, target:target, actual:actual };
+}
+
+function customerRows(pids, setMonth, limit){
+  var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
+  var cur = {}, prior = {};
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[3] > setMonth) return;
+    if (f[2] === IDX.curYear) cur[f[0]] = (cur[f[0]] || 0) + f[4];
+    else if (f[2] === IDX.priorYear) prior[f[0]] = (prior[f[0]] || 0) + f[4];
+  });
+  var rows = [];
+  Object.keys(cur).concat(Object.keys(prior)).forEach(function(k){ if (!rows.some(function(r){ return r.ci === +k; })) rows.push({ ci:+k }); });
+  rows.forEach(function(r){
+    var c = IDX.customers[r.ci];
+    r.name = c ? c.name : '(未知客戶)';
+    r.channel = c ? c.channel : 'Other';
+    r.y2 = cur[r.ci] || 0;
+    r.y1 = prior[r.ci] || 0;
+    r.growth = r.y1 ? r.y2 / r.y1 - 1 : null;
+  });
+  // 排序基準：今年 YTD（預設，最能反映現況）或去年 YTD（與 Excel「客戶排名」分頁一致，方便逐列核對）
+  rows.sort(state.custSort === 'prior'
+    ? function(a,b){ return b.y1 - a.y1; }
+    : function(a,b){ return b.y2 - a.y2; });
+  var total = rows.reduce(function(s,r){ return s + r.y2; }, 0) || 1;
+  var run = 0;
+  rows.forEach(function(r){ run += r.y2; r.cumShare = run / total; r.share = r.y2 / total; });
+  return { rows: rows.slice(0, limit || 20), total: total, count: rows.length };
+}
+
+function channelBreakdown(pids, setMonth){
+  var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
+  var map = {};
+  CHANNELS.forEach(function(c){ map[c.id] = { id:c.id, label:c.label, y1:0, y2:0 }; });
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[3] > setMonth) return;
+    var c = IDX.customers[f[0]];
+    var bucket = map[c ? c.channel : 'Other'] || map.Other;
+    if (f[2] === IDX.curYear) bucket.y2 += f[4];
+    else if (f[2] === IDX.priorYear) bucket.y1 += f[4];
+  });
+  var list = Object.keys(map).map(function(k){ return map[k]; }).filter(function(c){ return c.y1 || c.y2; });
+  var total = list.reduce(function(s,c){ return s + c.y2; }, 0) || 1;
+  list.forEach(function(c){ c.share = c.y2 / total; c.growth = c.y1 ? c.y2 / c.y1 - 1 : null; });
+  return list.sort(function(a,b){ return b.y2 - a.y2; });
+}
+
+function gapRows(pids, setMonth){
+  var total = 0;
+  var rows = pids.map(function(pi){
+    var p = IDX.products[pi], s = periodStats([pi], 1, setMonth);
+    total += s.actual;
+    return { pi:pi, name:p.name, category:p.category, actual:s.actual, target:s.target, gap:s.gap, achievement:s.achievement };
+  });
+  rows.forEach(function(r){ r.share = total ? r.actual / total : 0; });
+  return rows.sort(function(a,b){ return b.actual - a.actual; });
+}
+
+/* ==========================================================================
+   5. 篩選狀態
+   ========================================================================== */
+var state = { setMonth:8, category:'ALL', subcats:{}, sku:'ALL', chartMode:'amount', custSort:'current' };
+
+function subcatOptions(cat){
+  if (cat === 'DED') return [{id:'P1',label:'P1 視舒坦'},{id:'P2',label:'P2 淚膜系列'}];
+  if (cat === 'GE')  return [{id:'NHI',label:'健保 NHI'},{id:'SELFPAY',label:'自費 Self-Pay'},{id:'OTHER',label:'其他'}];
+  return [];
+}
+function activeSubcats(){ return Object.keys(state.subcats).filter(function(k){ return state.subcats[k]; }); }
+function categoryProducts(){
+  var subs = activeSubcats();
+  return IDX.products.filter(function(p){
+    if (state.category !== 'ALL' && p.category !== state.category) return false;
+    if (subs.length && subs.indexOf(p.group) < 0) return false;
+    return true;
+  });
+}
+function scopeIds(){
+  if (state.sku !== 'ALL'){ var i = +state.sku; return IDX.products[i] ? [i] : []; }
+  return categoryProducts().map(function(p){ return p.i; });
+}
+function scopeLabel(){
+  if (state.sku !== 'ALL' && IDX.products[+state.sku]) return IDX.products[+state.sku].name;
+  var n = categoryProducts().length;
+  if (state.category === 'ALL') return '全部產品 Total（' + n + ' 項）';
+  var base = state.category === 'DED' ? '人工淚液 DED' : '青光眼 GE';
+  var subs = activeSubcats();
+  return base + (subs.length ? '｜' + subs.map(function(s){ return GROUP_LABEL[s]; }).join('、') : '') + '（' + n + ' 項）';
+}
+function accentVar(){ return state.category === 'GE' ? 'var(--accent-ge)' : 'var(--accent-ded)'; }
+
+/* ==========================================================================
+   6. 格式化
+   ========================================================================== */
+var nf = new Intl.NumberFormat('zh-TW');
+function compact(v){
+  if (v == null) return '—';
+  var a = Math.abs(v);
+  if (a >= 1e8) return nf.format(Math.round(v/1e7)/10) + ' 億';
+  if (a >= 1e4) return nf.format(Math.round(v/1e3)/10) + ' 萬';
+  return nf.format(Math.round(v));
+}
+function full(v){ return v == null ? '—' : 'NT$' + nf.format(Math.round(v)); }
+function pct(v, d){ return v == null ? '—' : (v*100).toFixed(d == null ? 1 : d) + '%'; }
+function pctSigned(v){ return v == null ? '—' : (v >= 0 ? '+' : '') + (v*100).toFixed(1) + '%'; }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+/* ==========================================================================
+   7. 折線圖（純 SVG，不依賴任何外部函式庫）
+   ========================================================================== */
+function niceStep(v){
+  if (v <= 0) return 1;
+  var exp = Math.pow(10, Math.floor(Math.log10(v)));
+  var f = v / exp;
+  var step = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+  return step * exp;
+}
+/** 金額圖用的座標範圍：三條線常常擠在 250~350 萬這種窄區間，
+    如果一律從 0 起跳，差異會被壓扁到看不出來。所以資料落差小的時候，
+    軸的下緣就往上抬到資料下方一點（並在圖上標明不是從 0 開始）。 */
+function niceScale(min, max){
+  if (!isFinite(min) || !isFinite(max) || max <= 0) return { lo:0, hi:1, zeroBased:true };
+  var span = max - min;
+  var zeroBased = (min <= 0) || (span / max > 0.55);   // 落差夠大就照常從 0 起跳
+  if (zeroBased){
+    var step0 = niceStep(max / 4);
+    return { lo:0, hi:Math.ceil(max * 1.06 / step0) * step0, zeroBased:true };
+  }
+  var pad = span * 0.35 || max * 0.1;
+  var step = niceStep((span + pad * 2) / 4);
+  return { lo:Math.max(0, Math.floor((min - pad) / step) * step), hi:Math.ceil((max + pad) / step) * step, zeroBased:false };
+}
+
+function renderChart(holder, series, setMonth, accent, mode){
+  var W = 660, H = 268, PL = 62, PR = 16, PT = 16, PB = 30;
+  var iw = W - PL - PR, ih = H - PT - PB;
+  var isRate = (mode === 'rate');
+  var raw = series;   // 原始金額序列，tooltip 兩種模式都用得到
+
+  // 達成率模式：把每個月的「實績 / 目標」換算成百分比
+  if (isRate){
+    var rate = [];
+    for (var i = 0; i < 12; i++){
+      var a = series.actual[i], t = series.target[i];
+      rate.push(a != null && t ? a / t : null);
+    }
+    series = { prior:[], target:[], actual:rate };
+  }
+
+  var vals = [];
+  series.prior.forEach(function(v){ if (v != null) vals.push(v); });
+  series.target.forEach(function(v){ if (v != null) vals.push(v); });
+  series.actual.forEach(function(v){ if (v != null) vals.push(v); });
+  if (isRate) vals.push(1);
+  if (!vals.length) vals.push(1);
+  var sc;
+  if (isRate){
+    // 達成率軸用整齊的刻度（10%/20%/25%…），並且一定把 100% 這條基準線包進來
+    var lo0 = Math.min(1, Math.min.apply(null, vals)) - 0.05;
+    var hi0 = Math.max(1, Math.max.apply(null, vals)) + 0.05;
+    var steps = [0.05, 0.1, 0.2, 0.25, 0.5, 1];
+    var step = steps[steps.length - 1];
+    for (var si = 0; si < steps.length; si++){
+      if ((hi0 - lo0) / steps[si] <= 4.001){ step = steps[si]; break; }
+    }
+    sc = { lo:Math.max(0, Math.floor(lo0 / step) * step), hi:Math.ceil(hi0 / step) * step, zeroBased:false };
+    if ((sc.hi - sc.lo) / step < 4) sc.hi = sc.lo + step * 4;
+  } else {
+    sc = niceScale(Math.min.apply(null, vals), Math.max.apply(null, vals));
+  }
+  var top = sc.hi, bottom = sc.lo;
+  var X = function(i){ return PL + iw * (i / 11); };
+  var Y = function(v){ return PT + ih * (1 - (v - bottom) / (top - bottom || 1)); };
+
+  function path(arr){
+    var d = '', pen = false;
+    arr.forEach(function(v, i){
+      if (v == null){ pen = false; return; }
+      d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      pen = true;
+    });
+    return d.trim();
+  }
+  var lastIdx = -1;
+  series.actual.forEach(function(v, i){ if (v != null) lastIdx = i; });
+
+  var areaD = '';
+  if (lastIdx >= 0){
+    areaD = 'M' + X(0) + ' ' + Y(series.actual[0] || 0) + ' ';
+    for (var i = 1; i <= lastIdx; i++) areaD += 'L' + X(i).toFixed(1) + ' ' + Y(series.actual[i] || 0).toFixed(1) + ' ';
+    areaD += 'L' + X(lastIdx).toFixed(1) + ' ' + Y(0) + ' L' + X(0) + ' ' + Y(0) + ' Z';
+  }
+
+  var ticks = [0, 0.25, 0.5, 0.75, 1].map(function(f){ return bottom + (top - bottom) * f; });
+  var grid = ticks.map(function(t){
+    var isHundred = isRate && Math.abs(t - 1) < 1e-9;
+    return '<line x1="' + PL + '" y1="' + Y(t).toFixed(1) + '" x2="' + (W-PR) + '" y2="' + Y(t).toFixed(1) + '" stroke="var(--border)" stroke-width="1"/>' +
+           '<text x="' + (PL-8) + '" y="' + (Y(t)+3.5).toFixed(1) + '" text-anchor="end" font-size="10" font-family="IBM Plex Mono, monospace" fill="' + (isHundred ? 'var(--ink-muted)' : 'var(--ink-faint)') + '">' + (isRate ? Math.round(t*100) + '%' : compact(t)) + '</text>';
+  }).join('');
+  // 達成率模式：100% 這條基準線畫粗一點，一眼就看得出在線上還是線下
+  var refLine = isRate
+    ? '<line x1="' + PL + '" y1="' + Y(1).toFixed(1) + '" x2="' + (W-PR) + '" y2="' + Y(1).toFixed(1) + '" stroke="var(--ink-muted)" stroke-width="1.4" stroke-dasharray="6 4"/>' +
+      '<text x="' + (W-PR-2) + '" y="' + (Y(1)-6).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--ink-muted)">目標 100%</text>'
+    : '';
+  var xlabels = [];
+  for (var m = 1; m <= 12; m++){
+    xlabels.push('<text x="' + X(m-1).toFixed(1) + '" y="' + (H-9) + '" text-anchor="middle" font-size="10" fill="' + (m === setMonth ? 'var(--ink)' : 'var(--ink-faint)') + '" font-weight="' + (m === setMonth ? '600' : '400') + '">' + m + '</text>');
+  }
+  var setLine = '<line x1="' + X(setMonth-1).toFixed(1) + '" y1="' + PT + '" x2="' + X(setMonth-1).toFixed(1) + '" y2="' + (PT+ih) + '" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="2 3"/>';
+  var zeroNote = (!isRate && !sc.zeroBased)
+    ? '<text x="' + (W-PR) + '" y="' + (PT-4) + '" text-anchor="end" font-size="9.5" fill="var(--ink-faint)">縱軸非從 0 起（放大月間差異）</text>' : '';
+  // 達成率模式：每個月一個點，達標綠、落後紅、接近目標黃
+  var dots = '';
+  if (isRate){
+    series.actual.forEach(function(v, i){
+      if (v == null) return;
+      var c = v >= 1 ? 'var(--good)' : v < 0.9 ? 'var(--critical)' : 'var(--watch)';
+      dots += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="4" fill="' + c + '" stroke="var(--surface)" stroke-width="1.5"/>';
+    });
+  }
+
+  var svg =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + (isRate ? '每月達成率' : '月度業績趨勢圖') + '">' +
+      grid + refLine + setLine + zeroNote +
+      (areaD && !isRate ? '<path d="' + areaD + '" fill="' + accent + '" opacity="0.10"/>' : '') +
+      (isRate ? '' : '<path d="' + path(series.prior) + '" fill="none" stroke="var(--prior-line)" stroke-width="2.2" stroke-linejoin="round"/>') +
+      (!isRate && IDX.hasTargets ? '<path d="' + path(series.target) + '" fill="none" stroke="var(--ink-faint)" stroke-width="1.8" stroke-dasharray="6 4" stroke-linejoin="round"/>' : '') +
+      '<path d="' + path(series.actual) + '" fill="none" stroke="' + accent + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' +
+      dots +
+      (lastIdx >= 0 && !isRate ? '<circle cx="' + X(lastIdx).toFixed(1) + '" cy="' + Y(series.actual[lastIdx]).toFixed(1) + '" r="4" fill="' + accent + '" stroke="var(--surface)" stroke-width="1.8"/>' : '') +
+      '<line class="hover-line" x1="0" y1="' + PT + '" x2="0" y2="' + (PT+ih) + '" stroke="' + accent + '" stroke-width="1" opacity="0"/>' +
+      xlabels.join('') +
+    '</svg>';
+
+  holder.innerHTML = svg + '<div class="chart-tip"></div>';
+
+  var svgEl = holder.querySelector('svg');
+  var tip = holder.querySelector('.chart-tip');
+  var hoverLine = holder.querySelector('.hover-line');
+
+  function show(evt){
+    var rect = svgEl.getBoundingClientRect();
+    var px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+    var ratio = rect.width / W;
+    var i = Math.round((px / ratio - PL) / (iw / 11));
+    i = Math.max(0, Math.min(11, i));
+    hoverLine.setAttribute('x1', X(i)); hoverLine.setAttribute('x2', X(i)); hoverLine.setAttribute('opacity', '0.5');
+    var a = raw.actual[i], t = raw.target[i], p = raw.prior[i];
+    var ach = (a != null && t) ? a / t : null;
+    var yoy = (a != null && p) ? a / p - 1 : null;
+    tip.innerHTML =
+      '<div class="tip-title">' + (i+1) + ' 月</div>' +
+      (ach != null ? '<div class="tip-row"><span>達成率</span><b>' + pct(ach, 0) + '</b></div>' : '') +
+      (yoy != null ? '<div class="tip-row"><span>YoY 成長</span><b>' + pctSigned(yoy) + '</b></div>' : '') +
+      '<div class="tip-row"><span>' + IDX.curYear + ' 實績</span><b>' + (a == null ? '尚無資料' : full(a)) + '</b></div>' +
+      (t ? '<div class="tip-row"><span>' + IDX.curYear + ' 目標</span><b>' + full(t) + '</b></div>' : '') +
+      '<div class="tip-row"><span>' + IDX.priorYear + ' 實績</span><b>' + full(p) + '</b></div>';
+    tip.style.opacity = '1';
+    var left = X(i) * ratio + 14;
+    if (left + 180 > rect.width) left = X(i) * ratio - 180;
+    tip.style.left = Math.max(4, left) + 'px';
+    tip.style.top = '12px';
+  }
+  function hide(){ tip.style.opacity = '0'; hoverLine.setAttribute('opacity', '0'); }
+  svgEl.addEventListener('mousemove', show);
+  svgEl.addEventListener('mouseleave', hide);
+  svgEl.addEventListener('touchstart', show, { passive:true });
+  svgEl.addEventListener('touchmove', show, { passive:true });
+  svgEl.addEventListener('touchend', hide);
+}
+
+function legendHtml(accent, mode){
+  if (mode === 'rate'){
+    return '<span class="legend-item"><i class="legend-swatch" style="background:' + accent + '"></i>每月達成率</span>' +
+      '<span class="legend-item"><i class="dot" style="background:var(--good)"></i>達標 ≥100%</span>' +
+      '<span class="legend-item"><i class="dot" style="background:var(--watch)"></i>90–100%</span>' +
+      '<span class="legend-item"><i class="dot" style="background:var(--critical)"></i>落後 &lt;90%</span>';
+  }
+  return '<span class="legend-item"><i class="legend-swatch" style="background:var(--prior-line)"></i>' + IDX.priorYear + ' 實績</span>' +
+    (IDX.hasTargets ? '<span class="legend-item"><i class="legend-swatch dash" style="color:var(--ink-faint)"></i>' + IDX.curYear + ' 目標</span>' : '') +
+    '<span class="legend-item"><i class="legend-swatch" style="background:' + accent + '"></i>' + IDX.curYear + ' 實績</span>';
+}
+
+/* ==========================================================================
+   8. 各區塊渲染
+   ========================================================================== */
+function renderSetMonth(){
+  var sel = document.getElementById('setMonthSelect');
+  sel.innerHTML = '';
+  for (var m = 1; m <= 12; m++){
+    var o = document.createElement('option');
+    o.value = m; o.textContent = IDX.curYear + ' / ' + String(m).padStart(2, '0');
+    sel.appendChild(o);
+  }
+  sel.value = state.setMonth;
+  sel.onchange = function(){ state.setMonth = +sel.value; render(); };
+  document.getElementById('setMonthChip').textContent = IDX.curYear + ' / ' + String(state.setMonth).padStart(2, '0');
+}
+
+function renderCategoryPills(){
+  var el = document.getElementById('categoryPills'); el.innerHTML = '';
+  [['ALL','全部產品 Total'],['DED','人工淚液 DED'],['GE','青光眼 GE']].forEach(function(pair){
+    var b = document.createElement('button');
+    b.className = 'pill' + (pair[0] === 'GE' ? ' ge' : '');
+    b.textContent = pair[1];
+    b.setAttribute('aria-pressed', String(state.category === pair[0]));
+    b.onclick = function(){ state.category = pair[0]; state.subcats = {}; state.sku = 'ALL'; render(); };
+    el.appendChild(b);
+  });
+}
+
+function renderSubcatPills(){
+  var opts = subcatOptions(state.category);
+  var group = document.getElementById('subcatGroup'), div = document.getElementById('subcatDivider');
+  if (!opts.length){ group.style.display = 'none'; div.style.display = 'none'; return; }
+  group.style.display = ''; div.style.display = '';
+  document.getElementById('subcatLabel').textContent = (state.category === 'DED' ? 'DED' : 'GE') + ' 細項（可複選）';
+  var el = document.getElementById('subcatPills'); el.innerHTML = '';
+  opts.forEach(function(o){
+    var b = document.createElement('button');
+    b.className = 'pill' + (state.category === 'GE' ? ' ge' : '');
+    b.textContent = o.label;
+    b.setAttribute('aria-pressed', String(!!state.subcats[o.id]));
+    b.onclick = function(){ state.subcats[o.id] = !state.subcats[o.id]; state.sku = 'ALL'; render(); };
+    el.appendChild(b);
+  });
+}
+
+function renderSkuSelect(){
+  var sel = document.getElementById('skuSelect');
+  var opts = categoryProducts();
+  sel.innerHTML = '';
+  var all = document.createElement('option'); all.value = 'ALL'; all.textContent = '全部（' + opts.length + ' 項）';
+  sel.appendChild(all);
+  opts.forEach(function(p){
+    var o = document.createElement('option'); o.value = p.i; o.textContent = p.name; sel.appendChild(o);
+  });
+  var stillThere = opts.some(function(p){ return String(p.i) === String(state.sku); });
+  sel.value = stillThere ? state.sku : 'ALL';
+  state.sku = sel.value;
+  sel.onchange = function(){ state.sku = sel.value; render(); };
+}
+
+/** 達成率卡：主角是「達成率 %」，金額只以小字補充缺口／超前多少 */
+function achieveCard(label, sub, s){
+  var cls = stateFor(s.achievement);
+  var badge = s.achievement == null ? '未上傳目標' : s.achievement >= 1 ? '達標' : s.achievement < 0.9 ? '落後' : '接近目標';
+  var width = s.achievement == null ? 0 : Math.min(s.achievement * 100, 130);
+  var gapTxt = s.gap == null ? '尚未上傳目標'
+    : s.gap > 0 ? '<span class="gap-behind">缺口 ' + compact(s.gap) + '</span>'
+                : '<span class="gap-ahead">超前 ' + compact(Math.abs(s.gap)) + '</span>';
+  return '<div class="kpi-card state-' + cls + '">' +
+    '<div class="kpi-top"><span class="kpi-label">' + label + '</span><span class="kpi-badge ' + cls + '">' + badge + '</span></div>' +
+    '<div class="kpi-value">' + pct(s.achievement, 0) + '</div>' +
+    '<div class="kpi-sub">' + sub + '</div>' +
+    '<div class="progress"><i style="width:' + width + '%"></i></div>' +
+    '<div class="kpi-meta"><span>' + gapTxt + '</span><span>目標 ' + compact(s.target) + '</span></div>' +
+    '</div>';
+}
+
+/** 成長率卡：主角是「YoY 成長率 %」，小字補充去年同期基期 */
+function growthCard(label, sub, s){
+  var cls = s.yoy == null ? 'none' : s.yoy >= 0 ? 'good' : 'critical';
+  var badge = s.yoy == null ? '無去年同期' : s.yoy >= 0 ? '成長' : '衰退';
+  var width = s.yoy == null ? 0 : Math.min(Math.abs(s.yoy) * 100 * 2, 100);
+  return '<div class="kpi-card state-' + cls + '">' +
+    '<div class="kpi-top"><span class="kpi-label">' + label + '</span><span class="kpi-badge ' + cls + '">' + badge + '</span></div>' +
+    '<div class="kpi-value ' + (s.yoy == null ? '' : s.yoy >= 0 ? 'pos' : 'neg') + '">' + pctSigned(s.yoy) + '</div>' +
+    '<div class="kpi-sub">' + sub + '</div>' +
+    '<div class="progress"><i style="width:' + width + '%"></i></div>' +
+    '<div class="kpi-meta"><span>' + (s.yoy == null ? '—' : (s.actual >= s.prior ? '較去年同期多 ' : '較去年同期少 ') + compact(Math.abs(s.actual - s.prior))) + '</span>' +
+      '<span>去年同期 ' + compact(s.prior) + '</span></div>' +
+    '</div>';
+}
+
+function renderKPIs(){
+  var ids = scopeIds(), m = state.setMonth, q = Math.ceil(m/3);
+  var mtd = periodStats(ids, m, m);
+  var qtd = periodStats(ids, quarterStart(m), m);
+  var ytd = periodStats(ids, 1, m);
+  document.getElementById('kpiGrid').innerHTML =
+    achieveCard('MTD 達成率', '第 ' + m + ' 月', mtd) +
+    achieveCard('QTD 達成率', 'Q' + q + '（第 ' + quarterStart(m) + '–' + m + ' 月）', qtd) +
+    achieveCard('YTD 達成率', '累計第 1–' + m + ' 月', ytd) +
+    growthCard('MGR 月成長率', '第 ' + m + ' 月 vs. 去年同月', mtd) +
+    growthCard('QGR 季成長率', 'Q' + q + ' vs. 去年同季', qtd) +
+    growthCard('YGR 年成長率', 'YTD vs. 去年同期', ytd);
+  document.getElementById('scopeHint').textContent = scopeLabel();
+}
+
+function renderChartModePills(){
+  var el = document.getElementById('chartModePills'); el.innerHTML = '';
+  [['amount','金額趨勢'],['rate','每月達成率']].forEach(function(pair){
+    var b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = pair[1];
+    b.setAttribute('aria-pressed', String(state.chartMode === pair[0]));
+    b.onclick = function(){ state.chartMode = pair[0]; render(); };
+    el.appendChild(b);
+  });
+}
+
+function renderCharts(){
+  renderChartModePills();
+  var mode = state.chartMode;
+  var allIds = IDX.products.map(function(p){ return p.i; });
+  renderChart(document.getElementById('holderTotal'), trendSeries(allIds, state.setMonth), state.setMonth, 'var(--accent-ded)', mode);
+  document.getElementById('scopeTotal').textContent = 'DED + GE 共 ' + allIds.length + ' 項品項';
+  document.getElementById('legendTotal').innerHTML = legendHtml('var(--accent-ded)', mode);
+
+  var ids = scopeIds(), accent = accentVar();
+  renderChart(document.getElementById('holderSelected'), trendSeries(ids, state.setMonth), state.setMonth, accent, mode);
+  document.getElementById('scopeSelected').textContent = scopeLabel();
+  document.getElementById('legendSelected').innerHTML = legendHtml(accent, mode);
+}
+
+function renderGapTable(){
+  var ids = categoryProducts().map(function(p){ return p.i; });
+  var rows = gapRows(ids, state.setMonth);
+  document.getElementById('gapScopeHint').textContent =
+    (state.category === 'ALL' ? '全部產品' : scopeLabel()) + ' · 依 YTD 實績排序' + (IDX.hasTargets ? '' : '（尚未上傳目標，僅顯示實績）');
+  if (!rows.length){ document.getElementById('gapTableBody').innerHTML = '<tr><td colspan="8" class="empty-note">此範圍沒有資料</td></tr>'; return; }
+  document.getElementById('gapTableBody').innerHTML = rows.map(function(r){
+    var cls = stateFor(r.achievement);
+    var label = r.achievement == null ? '未上傳目標' : r.achievement >= 1 ? '已達標，避免塞貨' : r.achievement < 0.9 ? '尚有缺口，評估回補' : '接近目標';
+    return '<tr>' +
+      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td><span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span></td>' +
+      '<td class="num">' + compact(r.actual) + '</td>' +
+      '<td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:' + Math.min(r.share*100*3, 100).toFixed(0) + '%"></div></div><span>' + pct(r.share, 1) + '</span></div></td>' +
+      '<td class="num">' + compact(r.target) + '</td>' +
+      '<td class="num">' + (r.gap == null ? '—'
+          : r.gap > 0 ? '<span class="gap-behind">缺 ' + compact(r.gap) + '</span>'
+                      : '<span class="gap-ahead">超前 ' + compact(Math.abs(r.gap)) + '</span>') + '</td>' +
+      '<td class="num">' + pct(r.achievement, 0) + '</td>' +
+      '<td><span class="badge-row ' + cls + '"><span class="badge-dot"></span>' + label + '</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderCustSortPills(){
+  var el = document.getElementById('custSortPills'); el.innerHTML = '';
+  [['current','依今年 YTD'],['prior','依去年 YTD（同 Excel）']].forEach(function(pair){
+    var b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = pair[1];
+    b.setAttribute('aria-pressed', String(state.custSort === pair[0]));
+    b.onclick = function(){ state.custSort = pair[0]; render(); };
+    el.appendChild(b);
+  });
+}
+
+function renderCustomers(){
+  renderCustSortPills();
+  var ids = scopeIds();
+  var res = customerRows(ids, state.setMonth, 20);
+  document.getElementById('custScopeHint').textContent =
+    scopeLabel() + (state.category === 'ALL' ? '（DED+GE 合計；Excel 版是 DED、GE 分開排名，切上方類別即可逐列對照）' : '');
+  var callout = document.getElementById('top20Callout');
+  if (!res.rows.length){
+    callout.textContent = '此範圍沒有客戶資料。';
+    document.getElementById('custTableBody').innerHTML = '<tr><td colspan="7" class="empty-note">此範圍沒有資料</td></tr>';
+    document.getElementById('channelBars').innerHTML = '<p class="empty-note">此範圍沒有資料</p>';
+    return;
+  }
+  var hitIdx = -1;
+  res.rows.forEach(function(r, i){ if (hitIdx < 0 && r.cumShare >= 0.8) hitIdx = i; });
+  var last = res.rows[res.rows.length - 1];
+  callout.innerHTML = hitIdx >= 0
+    ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的業績（共 ' + res.count + ' 家有交易）'
+    : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表業績分散在 ' + res.count + ' 家客戶。';
+  document.getElementById('custTableBody').innerHTML = res.rows.map(function(r, i){
+    var prev = i > 0 ? res.rows[i-1].cumShare : 0;
+    var hit = r.cumShare >= 0.8 && prev < 0.8;
+    return '<tr' + (hit ? ' class="cum-hit"' : '') + '>' +
+      '<td class="num">' + (i+1) + '</td>' +
+      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td>' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
+      '<td class="num">' + compact(r.y1) + '</td>' +
+      '<td class="num">' + compact(r.y2) + '</td>' +
+      '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '">' + pctSigned(r.growth) + '</td>' +
+      '<td class="num">' + pct(r.cumShare, 0) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var chans = channelBreakdown(ids, state.setMonth);
+  document.getElementById('channelBars').innerHTML = chans.map(function(c){
+    return '<div class="chan-row">' +
+      '<span class="chan-label">' + c.label + '</span>' +
+      '<div class="chan-bar-track"><div class="chan-bar-fill" style="width:' + (c.share*100).toFixed(1) + '%;background:' + accentVar() + '"></div></div>' +
+      '<div class="chan-figs"><span class="amt">' + compact(c.y2) + '</span> · ' + pct(c.share, 0) +
+        ' · <span class="' + (c.growth == null ? '' : c.growth >= 0 ? 'growth up' : 'growth down') + '">' + pctSigned(c.growth) + '</span></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderSourceBar(){
+  var demo = DATA.kind === 'demo';
+  var chip = document.getElementById('sourceChip');
+  chip.className = 'chip ' + (demo ? 'demo' : 'live');
+  chip.textContent = demo ? '示範資料' : '已載入你的資料';
+  document.getElementById('sourceTitle').textContent = demo
+    ? '目前顯示：示範資料（客戶名稱都以「（示範）」開頭，不是你的實際客戶）'
+    : '目前顯示：你上傳的資料 · ' + DATA.sources.map(function(s){
+        return s.sheet + ' ' + nf.format(s.rows) + (s.kind === 'target' ? ' 個月目標' : (s.scanned ? '/' + nf.format(s.scanned) : '') + ' 筆');
+      }).join('、');
+  document.getElementById('sourceDesc').innerHTML = demo
+    ? '把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>，會自動找出 <code>DED資料</code>、<code>GE資料</code>、<code>Target&amp;Sales</code> 三張表，整份儀表板即時重算。檔案只在你自己的瀏覽器裡解析，不會上傳到任何地方。'
+    : '最後更新：' + new Date(DATA.updatedAt).toLocaleString('zh-TW') +
+      '｜下個月只要再拖一次新的原始檔覆蓋即可。資料記在<b>這台電腦的瀏覽器</b>裡，同一個連結下次打開會自動帶出來；換電腦或清瀏覽器資料才需要重新上傳。';
+  document.getElementById('resetBtn').hidden = demo;
+  document.getElementById('footNote').innerHTML =
+    (demo
+      ? '目前是示範資料（客戶名稱都以「（示範）」開頭），用來說明版面與計算邏輯；上傳你自己的原始檔後，所有數字與客戶名稱都會換成你的實際資料。'
+      : '') +
+    '上傳的檔案完全在你自己的瀏覽器裡解析與保存（localStorage），沒有送到伺服器，<b>把這個連結分享給同事，他看到的也只會是示範資料</b>，他可以直接上傳自己的檔案來用——等於 Excel 版「通用套版」的網頁版。' +
+    '計算邏輯沿用 Excel 版「DEOH_銷售動態儀表板」：YTD／QTD／MTD、缺口與達成率、Top20 集中度、同院所不同送貨點合併（臺北榮總、振興、輔大、三重、蘭陽院區）。' +
+    '通路分類：DED 依 <code>Customer classification</code>（Medical Facility＝醫院、Diagnostic Facility＋Retail＝診所、Pharmacy Independent＝獨立藥局、Pharmacy Retail＝其他連鎖藥局）；' +
+    'GE 依 <code>Customer Channel</code>（HP＝醫院、GP／P1＝診所、DS／T1＝藥局，GE 原始資料沒有再分獨立／連鎖，一律歸入獨立藥局）。';
+}
+
+function safe(fn, label){ try { fn(); } catch(e){ console.error('render step failed:', label, e); } }
+
+function render(){
+  safe(renderSourceBar, 'sourceBar');
+  safe(renderSetMonth, 'setMonth');
+  safe(renderCategoryPills, 'categoryPills');
+  safe(renderSubcatPills, 'subcatPills');
+  safe(renderSkuSelect, 'skuSelect');
+  safe(renderKPIs, 'kpis');
+  safe(renderCharts, 'charts');
+  safe(renderGapTable, 'gapTable');
+  safe(renderCustomers, 'customers');
+}
+
+/* ==========================================================================
+   9. 載入 / 儲存（Artifact db → 瀏覽器本機 → 示範資料）
+   ========================================================================== */
+/* 刻意「只存在使用者自己的瀏覽器」(localStorage)，不放伺服器端共用儲存：
+   業務之間的業績不能互相看，如果存在頁面的共用資料庫，任何被分享到這個連結的人
+   都會看到上傳者的數字。存在本機的話，同事打開同一個連結只會看到示範資料，
+   可以直接上傳他自己的檔案 —— 等於 Excel 版「通用套版」的網頁版。 */
+
+function setData(ds, keepMonth){
+  DATA = ds;
+  IDX = buildIndex(ds);
+  if (!keepMonth) state.setMonth = IDX.latestMonth;
+  state.setMonth = Math.min(Math.max(1, state.setMonth), 12);
+  if (state.sku !== 'ALL' && !IDX.products[+state.sku]) state.sku = 'ALL';
+  render();
+}
+
+function status(msg, cls){
+  var el = document.getElementById('uploadStatus');
+  el.textContent = msg || '';
+  el.className = 'upload-status' + (cls ? ' ' + cls : '');
+}
+
+function persist(ds){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(ds)); return true; }
+  catch(e){ console.warn('localStorage save failed', e); return false; }
+}
+
+function loadStored(){
+  try {
+    var raw = localStorage.getItem(LS_KEY);
+    if (raw){
+      var ds = JSON.parse(raw);
+      if (ds && ds.facts && ds.facts.length) return ds;
+    }
+  } catch(e){}
+  return null;
+}
+
+async function handleFiles(files){
+  if (!files || !files.length) return;
+  status('讀取檔案中…');
+  try {
+    var ds = await buildDatasetFromFiles(Array.prototype.slice.call(files), function(m){ status(m); });
+    setData(ds, false);
+    var saved = persist(ds);
+    status('已更新：' + ds.sources.map(function(s){
+             return s.sheet + ' ' + nf.format(s.rows) + (s.kind === 'target' ? ' 個月目標' : (s.scanned ? ' / ' + nf.format(s.scanned) + ' 筆（略過金額為 0 的退貨、贈品列）' : ' 筆'));
+           }).join('；') + (saved ? '。已記在這台電腦的瀏覽器，下次打開同一個連結會自動帶出來。' : '。（瀏覽器無法儲存，關掉頁面後需要重新上傳）'), 'ok');
+  } catch(e){
+    console.error(e);
+    status('讀取失敗：' + (e && e.message ? e.message : e), 'error');
+  }
+}
+
+function wireUpload(){
+  var input = document.getElementById('fileInput');
+  document.getElementById('uploadBtn').onclick = function(){ input.click(); };
+  input.onchange = function(){ handleFiles(input.files); input.value = ''; };
+
+  var bar = document.getElementById('sourceBar');
+  ['dragenter','dragover'].forEach(function(ev){
+    bar.addEventListener(ev, function(e){ e.preventDefault(); bar.classList.add('dragging'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    bar.addEventListener(ev, function(e){ e.preventDefault(); bar.classList.remove('dragging'); });
+  });
+  bar.addEventListener('drop', function(e){ handleFiles(e.dataTransfer.files); });
+
+  document.getElementById('resetBtn').onclick = function(){
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    setData(buildDemoDataset(), false);
+    status('已清除這台電腦上的資料，回到示範資料。');
+  };
+}
+
+// 先用示範資料把畫面畫出來（頁面一打開就是可用狀態），再換成這台電腦上存過的資料
+var stored = loadStored();
+setData(stored || buildDemoDataset(), false);
+wireUpload();
+
+})();
+</script>
