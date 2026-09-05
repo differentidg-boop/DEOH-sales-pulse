@@ -180,8 +180,44 @@
   .bar-track{ width:56px; height:6px; border-radius:99px; background:var(--surface-2); flex-shrink:0; }
   .bar-fill{ height:100%; border-radius:99px; background:var(--accent-ded); }
 
+
+  /* ---------- Top20 客戶點開後的品項明細 ---------- */
+  tr.cust-row{ cursor:pointer; }
+  tr.cust-row:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:-2px; }
+  tr.cust-row.is-open td{ background:var(--accent-ded-soft); }
+  .disclose{ display:inline-block; width:14px; color:var(--ink-faint); font-size:10px; }
+  tr.cust-row.is-open .disclose{ color:var(--accent-ded); }
+  tr.detail-row > td{ padding:0 0 14px; background:var(--surface); }
+  .detail-wrap{ border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-2); padding:14px 16px; }
+  .detail-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .detail-title{ font-family:'Manrope','Noto Sans TC',sans-serif; font-size:14px; font-weight:700; }
+  .detail-chan{ font-size:11.5px; font-weight:500; color:var(--ink-muted); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:2px 9px; margin-left:9px; white-space:nowrap; }
+  .detail-figs{ font-size:12px; color:var(--ink-muted); margin-top:5px; }
+  .detail-figs b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  .detail-close{ font-size:13px; padding:2px 7px; align-self:flex-start; line-height:1.2; }
+  .detail-head-main{ flex:1 1 260px; min-width:0; }
+  .detail-spark{ flex:0 0 250px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px 4px; }
+  .spark-key{ font-weight:400; color:var(--ink-faint); }
+  .spark-key i{ display:inline-block; vertical-align:middle; margin-right:3px; }
+  .spark-key .sk-bar{ width:9px; height:9px; border-radius:2px; background:var(--accent-ded); opacity:.35; }
+  .spark-key .sk-line{ width:12px; height:2px; background:var(--prior-line); }
+  .detail-table-wrap{ overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); }
+  table.detail-table{ min-width:520px; font-size:12.5px; }
+  table.detail-table td.name{ min-width:200px; }
+  table.detail-table thead th{ padding:8px 12px; }
+  table.detail-table tbody td{ padding:7px 12px; }
+  table.detail-table tbody tr:hover td{ background:var(--surface-2); }
+  .mini-badge{ display:inline-block; font-size:10px; font-weight:600; padding:1px 6px; border-radius:5px; margin-left:4px; }
+  .mini-badge.good{ background:var(--good-soft); color:var(--good); }
+  .mini-badge.critical{ background:var(--critical-soft); color:var(--critical); }
+  .detail-side{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 13px; }
+  .detail-side-title{ font-size:11.5px; font-weight:600; color:var(--ink-muted); margin-bottom:6px; }
+  .detail-side .spark{ display:block; width:100%; height:auto; }
+  .detail-side-note{ font-size:10.5px; color:var(--ink-faint); line-height:1.6; margin-top:6px; }
+  @media (max-width:860px){ .detail-grid{ grid-template-columns:1fr; } }
+
   /* ---------- customer / channel ---------- */
-  .cust-grid{ display:grid; grid-template-columns:1.55fr 1fr; gap:14px; align-items:start; }
+  .cust-grid{ display:grid; grid-template-columns:minmax(0,1.9fr) minmax(230px,.85fr); gap:14px; align-items:start; }
   .side-panel{ padding:15px 18px; }
   .side-panel h3{ font-size:12.5px; font-weight:700; margin:0 0 12px; }
   .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
@@ -1033,6 +1069,52 @@ function customerRows(pids, setMonth, limit){
   return { rows: rows.slice(0, limit || 20), total: total, count: rows.length };
 }
 
+/** 單一客戶的品項明細：這家客戶在目前類別範圍內，每個品項今年/去年 YTD 各是多少。
+    同時標出「新開品項」(去年沒買、今年有) 與「停買品項」(去年有、今年掛零)，
+    這兩種在拜訪前最值得先看。 */
+function customerProductBreakdown(ci, pids, setMonth){
+  var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
+  var cur = {}, prior = {};
+  DATA.facts.forEach(function(f){
+    if (f[0] !== ci || !pset[f[1]] || f[3] > setMonth) return;
+    if (f[2] === IDX.curYear) cur[f[1]] = (cur[f[1]] || 0) + f[4];
+    else if (f[2] === IDX.priorYear) prior[f[1]] = (prior[f[1]] || 0) + f[4];
+  });
+  var seen = {}, rows = [];
+  Object.keys(cur).concat(Object.keys(prior)).forEach(function(k){
+    if (seen[k]) return;
+    seen[k] = 1;
+    var pi = +k, p = IDX.products[pi];
+    if (!p) return;
+    var y2 = cur[pi] || 0, y1 = prior[pi] || 0;
+    rows.push({
+      pi: pi, name: p.name, category: p.category,
+      y1: y1, y2: y2,
+      growth: y1 ? y2 / y1 - 1 : null,
+      isNew: y1 === 0 && y2 > 0,
+      isLost: y1 > 0 && y2 === 0
+    });
+  });
+  var total = rows.reduce(function(s, r){ return s + r.y2; }, 0);
+  rows.forEach(function(r){ r.share = total ? r.y2 / total : 0; });
+  rows.sort(function(a, b){ return b.y2 - a.y2 || b.y1 - a.y1; });
+  return { rows: rows, y2Total: total, y1Total: rows.reduce(function(s, r){ return s + r.y1; }, 0) };
+}
+
+/** 單一客戶的每月業績（今年 vs 去年），用來畫小趨勢圖、看下單節奏 */
+function customerMonthlySeries(ci, pids){
+  var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
+  var cur = [0,0,0,0,0,0,0,0,0,0,0,0], prior = cur.slice();
+  DATA.facts.forEach(function(f){
+    if (f[0] !== ci || !pset[f[1]]) return;
+    var m = f[3];
+    if (m < 1 || m > 12) return;
+    if (f[2] === IDX.curYear) cur[m-1] += f[4];
+    else if (f[2] === IDX.priorYear) prior[m-1] += f[4];
+  });
+  return { cur: cur, prior: prior };
+}
+
 function channelBreakdown(pids, setMonth){
   var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
   var map = {};
@@ -1064,7 +1146,7 @@ function gapRows(pids, setMonth){
 /* ==========================================================================
    5. 篩選狀態
    ========================================================================== */
-var state = { setMonth:8, category:'ALL', subcats:{}, sku:'ALL', chartMode:'amount', custSort:'current' };
+var state = { setMonth:8, category:'ALL', subcats:{}, sku:'ALL', chartMode:'amount', custSort:'current', openCustomer:null };
 
 function subcatOptions(cat){
   if (cat === 'DED') return [{id:'P1',label:'P1 視舒坦'},{id:'P2',label:'P2 淚膜系列'}];
@@ -1455,6 +1537,86 @@ function renderCustSortPills(){
   });
 }
 
+/** 小趨勢圖：這家客戶今年 vs 去年的每月業績（純 SVG，無外部函式庫） */
+function customerSparkline(series, setMonth, accent){
+  var W = 300, H = 74, PL = 4, PR = 4, PT = 8, PB = 14;
+  var iw = W - PL - PR, ih = H - PT - PB;
+  var max = Math.max.apply(null, series.cur.concat(series.prior).concat([1]));
+  var X = function(i){ return PL + iw * (i / 11); };
+  var Y = function(v){ return PT + ih * (1 - v / max); };
+  function line(arr, limit){
+    var d = '', pen = false;
+    arr.forEach(function(v, i){
+      if (limit != null && i + 1 > limit){ pen = false; return; }
+      d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      pen = true;
+    });
+    return d.trim();
+  }
+  var bars = '';
+  for (var i = 0; i < 12; i++){
+    if (i + 1 > setMonth) break;
+    var v = series.cur[i], h = Math.max(1, (ih * v / max));
+    bars += '<rect x="' + (X(i) - 7).toFixed(1) + '" y="' + (PT + ih - h).toFixed(1) + '" width="14" height="' + h.toFixed(1) +
+            '" rx="2" fill="' + accent + '" opacity="' + (v ? 0.22 : 0.06) + '"/>';
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="spark" role="img" aria-label="客戶每月業績趨勢">' +
+    bars +
+    '<path d="' + line(series.prior) + '" fill="none" stroke="var(--prior-line)" stroke-width="1.6"/>' +
+    '<path d="' + line(series.cur, setMonth) + '" fill="none" stroke="' + accent + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<text x="' + PL + '" y="' + (H-3) + '" font-size="9" fill="var(--ink-faint)">1月</text>' +
+    '<text x="' + (W-PR) + '" y="' + (H-3) + '" text-anchor="end" font-size="9" fill="var(--ink-faint)">12月</text>' +
+    '</svg>';
+}
+
+/** 點開某個客戶後，在該列下方展開的品項明細 */
+function customerDetailHtml(row){
+  var pids = categoryProducts().map(function(p){ return p.i; });   // 忽略「單品」篩選，看這家客戶的完整品項組合
+  var bd = customerProductBreakdown(row.ci, pids, state.setMonth);
+  var accent = accentVar();
+  var spark = customerSparkline(customerMonthlySeries(row.ci, pids), state.setMonth, accent);
+  var growth = bd.y1Total ? bd.y2Total / bd.y1Total - 1 : null;
+  var newItems = bd.rows.filter(function(r){ return r.isNew; }).length;
+  var lostItems = bd.rows.filter(function(r){ return r.isLost; }).length;
+
+  var lines = bd.rows.map(function(r){
+    var badge = r.isNew ? '<span class="mini-badge good">新開</span>'
+              : r.isLost ? '<span class="mini-badge critical">停買</span>' : '';
+    var gcls = r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down';
+    return '<tr>' +
+      '<td class="name">' + esc(r.name) + ' <span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span> ' + badge + '</td>' +
+      '<td class="num">' + compact(r.y1) + '</td>' +
+      '<td class="num">' + compact(r.y2) + '</td>' +
+      '<td class="num ' + gcls + '">' + (r.isNew ? '新開' : pctSigned(r.growth)) + '</td>' +
+      '<td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:' +
+        Math.min(r.share * 100 * 2, 100).toFixed(0) + '%;background:' + accent + '"></div></div><span>' + pct(r.share, 1) + '</span></div></td>' +
+    '</tr>';
+  }).join('');
+
+  return '<tr class="detail-row"><td colspan="7"><div class="detail-wrap">' +
+    '<div class="detail-head">' +
+      '<div class="detail-head-main">' +
+        '<div class="detail-title">' + esc(row.name) + '<span class="detail-chan">' + (CHANNEL_LABEL[row.channel] || '') + '</span></div>' +
+        '<div class="detail-figs">' +
+          '今年 YTD <b>' + compact(bd.y2Total) + '</b>　去年 <b>' + compact(bd.y1Total) + '</b>　' +
+          '<span class="' + (growth == null ? '' : growth >= 0 ? 'growth up' : 'growth down') + '">YoY ' + pctSigned(growth) + '</span>　' +
+          '有交易品項 <b>' + bd.rows.filter(function(r){ return r.y2 > 0; }).length + '</b> 項' +
+          (newItems ? '　<span class="growth up">新開 ' + newItems + ' 項</span>' : '') +
+          (lostItems ? '　<span class="growth down">停買 ' + lostItems + ' 項</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="detail-spark">' +
+        '<div class="detail-side-title">每月業績　<span class="spark-key"><i class="sk-bar"></i>' + IDX.curYear +
+          '　<i class="sk-line"></i>' + IDX.priorYear + '</span></div>' + spark +
+      '</div>' +
+      '<button class="btn ghost detail-close" data-close="1" title="收合">✕</button>' +
+    '</div>' +
+    '<div class="detail-table-wrap"><table class="detail-table"><thead><tr>' +
+      '<th>品項</th><th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">佔此客戶</th>' +
+    '</tr></thead><tbody>' + (lines || '<tr><td colspan="5" class="empty-note">這個範圍內沒有品項資料</td></tr>') + '</tbody></table></div>' +
+  '</div></td></tr>';
+}
+
 function renderCustomers(){
   renderCustSortPills();
   var ids = scopeIds();
@@ -1474,19 +1636,48 @@ function renderCustomers(){
   callout.innerHTML = hitIdx >= 0
     ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的業績（共 ' + res.count + ' 家有交易）'
     : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表業績分散在 ' + res.count + ' 家客戶。';
-  document.getElementById('custTableBody').innerHTML = res.rows.map(function(r, i){
+  // 目前展開的客戶若已不在這個範圍的名單裡，就自動收合
+  if (state.openCustomer != null && !res.rows.some(function(r){ return r.ci === state.openCustomer; })) state.openCustomer = null;
+
+  var tbody = document.getElementById('custTableBody');
+  tbody.innerHTML = res.rows.map(function(r, i){
     var prev = i > 0 ? res.rows[i-1].cumShare : 0;
     var hit = r.cumShare >= 0.8 && prev < 0.8;
-    return '<tr' + (hit ? ' class="cum-hit"' : '') + '>' +
+    var open = state.openCustomer === r.ci;
+    var cls = ['cust-row'];
+    if (hit) cls.push('cum-hit');
+    if (open) cls.push('is-open');
+    var main = '<tr class="' + cls.join(' ') + '" data-ci="' + r.ci + '" tabindex="0" role="button" aria-expanded="' + open + '" title="點一下看這家客戶的品項明細">' +
       '<td class="num">' + (i+1) + '</td>' +
-      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td class="name"><span class="disclose">' + (open ? '▾' : '▸') + '</span>' + esc(r.name) + '</td>' +
       '<td>' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
       '<td class="num">' + compact(r.y1) + '</td>' +
       '<td class="num">' + compact(r.y2) + '</td>' +
       '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '">' + pctSigned(r.growth) + '</td>' +
       '<td class="num">' + pct(r.cumShare, 0) + '</td>' +
     '</tr>';
+    return main + (open ? customerDetailHtml(r) : '');
   }).join('');
+
+  // 點客戶那一列 → 展開/收合品項明細（再點一次收合）
+  Array.prototype.forEach.call(tbody.querySelectorAll('tr.cust-row'), function(tr){
+    function toggle(){
+      var ci = +tr.getAttribute('data-ci');
+      state.openCustomer = (state.openCustomer === ci) ? null : ci;
+      renderCustomers();
+    }
+    tr.addEventListener('click', toggle);
+    tr.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+    });
+  });
+  Array.prototype.forEach.call(tbody.querySelectorAll('[data-close]'), function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      state.openCustomer = null;
+      renderCustomers();
+    });
+  });
 
   var chans = channelBreakdown(ids, state.setMonth);
   document.getElementById('channelBars').innerHTML = chans.map(function(c){
