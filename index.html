@@ -148,7 +148,7 @@
   .kpi-card.state-good .progress > i{ background:var(--good); }
   .kpi-card.state-watch .progress > i{ background:var(--watch); }
 
-  /* 常駐的「全公司」列：不管往下鑽到哪一個品項，全盤數字都還在眼前 */
+  /* 常駐的「全產品業績」列：不管挑到哪一個品項分析，全盤數字都還在眼前 */
   .global-strip{ display:flex; align-items:center; gap:8px 16px; flex-wrap:wrap;
     background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent-ded);
     border-radius:var(--radius-md); padding:9px 14px; margin-bottom:11px; box-shadow:var(--shadow); font-size:12.5px; }
@@ -160,7 +160,7 @@
   .btn.tiny{ font-size:11.5px; padding:3px 10px; }
 
   /* 收合後的 KPI：跟篩選列黏在一起釘在畫面上方，往下看客戶/缺口時
-     六個指標仍然跟著目前選的範圍走，不會只剩全公司一個數字。 */
+     六個指標仍然跟著目前選的範圍走，不會只剩全產品業績一個數字。 */
   .kpi-dock{ max-width:1320px; margin:0 auto; padding:7px 24px 9px;
              display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; border-top:1px dashed var(--border); }
   .dock-scope{ font-size:11.5px; font-weight:600; color:var(--ink); flex:0 0 auto;
@@ -319,6 +319,32 @@
   .chan-bar-fill{ height:100%; background:var(--accent-ded); }
   .chan-figs{ width:158px; text-align:right; font-size:11.5px; color:var(--ink-muted); flex-shrink:0; font-family:'IBM Plex Mono',monospace; }
   .chan-figs .amt{ color:var(--ink); font-weight:600; font-size:12.5px; }
+  /* 客戶搜尋 + 標註 */
+  .cust-tools{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-bottom:11px; }
+  .search-wrap{ position:relative; flex:1 1 260px; min-width:0; }
+  .search-input{ width:100%; font-family:inherit; font-size:13px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:7px 30px 7px 11px; }
+  .search-input::placeholder{ color:var(--ink-faint); }
+  .search-input:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
+  .search-clear{ position:absolute; right:6px; top:50%; transform:translateY(-50%); border:none; background:transparent;
+    color:var(--ink-faint); cursor:pointer; font-size:12px; padding:3px 5px; line-height:1; }
+  .search-clear:hover{ color:var(--critical); }
+  .pill.tag-pill{ font-size:11.5px; padding:4px 10px; }
+  .pill.tag-pill .cnt{ opacity:.65; margin-left:4px; font-family:'IBM Plex Mono',monospace; }
+  .tag-badge{ display:inline-block; font-size:10px; font-weight:600; padding:1px 6px; border-radius:5px; margin-left:5px;
+    background:var(--watch-soft); color:var(--watch); white-space:nowrap; }
+  tr.cust-row.is-tagged td.name{ box-shadow:inset 3px 0 0 var(--watch); }
+  /* 展開明細裡的標註編輯區 */
+  .tag-edit{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:0 0 11px; padding:9px 11px;
+    background:var(--surface); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); }
+  .tag-edit-label{ font-size:11.5px; font-weight:600; color:var(--ink-muted); flex:0 0 auto; }
+  .tag-btn{ font-family:inherit; font-size:11.5px; font-weight:600; padding:3px 10px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--border-strong); background:var(--surface); color:var(--ink-muted); }
+  .tag-btn:hover{ border-color:var(--watch); color:var(--watch); }
+  .tag-btn.on{ background:var(--watch-soft); border-color:var(--watch); color:var(--watch); }
+  .tag-new{ font-family:inherit; font-size:11.5px; width:118px; padding:3px 8px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-sm); }
+  .tag-note{ font-size:10.5px; color:var(--ink-faint); flex:1 1 100%; line-height:1.6; }
   .callout{ font-size:12.5px; color:var(--ink-muted); background:var(--surface-2); border-radius:var(--radius-sm); padding:9px 13px; margin:0 0 13px; }
   .callout b{ color:var(--ink); }
   .merge-intro{ font-size:12px; color:var(--ink-muted); line-height:1.7; margin:0; padding:14px 18px 4px; }
@@ -604,8 +630,16 @@
     <div class="cust-grid">
       <div class="panel side-panel">
         <div class="panel-head">
-          <h3>Top 20 客戶／院所排行（YTD）</h3>
+          <h3 id="custPanelTitle">Top 20 客戶／院所排行（YTD）</h3>
           <div class="pillset" id="custSortPills"></div>
+        </div>
+        <div class="cust-tools">
+          <div class="search-wrap">
+            <input type="search" id="custSearch" class="search-input" autocomplete="off"
+                   placeholder="搜尋客戶名稱（不在 Top 20 也找得到）" aria-label="搜尋客戶名稱" />
+            <button type="button" class="search-clear" id="custSearchClear" title="清除搜尋" hidden>✕</button>
+          </div>
+          <div class="pillset" id="tagFilterPills"></div>
         </div>
         <p class="callout" id="top20Callout"></p>
         <div class="table-scroll">
@@ -658,7 +692,36 @@
    }
    ========================================================================== */
 
-var LS_KEY = 'deoh-pulse-dataset-v1';
+var LS_KEY  = 'deoh-pulse-dataset-v1';
+/* 客戶標註存在「另一把鑰匙」底下，而且用「客戶名稱」當索引、不是用資料裡的流水號。
+   這樣每個月重新上傳原始檔（客戶順序、編號都會變）標註也不會跑掉或消失；
+   就算某個客戶這個月沒有出貨、暫時從名單上消失，標註仍然留著，下個月回來就又看得到。 */
+var TAG_KEY = 'deoh-pulse-tags-v1';
+var TAG_PRESETS = ['青光眼追蹤','人工淚液追蹤','重點客戶','待拜訪'];
+var TAGS = {};
+function loadTags(){
+  try { var raw = localStorage.getItem(TAG_KEY); var o = raw ? JSON.parse(raw) : null;
+        return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  catch(e){ return {}; }
+}
+function saveTags(){
+  try { localStorage.setItem(TAG_KEY, JSON.stringify(TAGS)); return true; }
+  catch(e){ console.warn('標註儲存失敗', e); return false; }
+}
+function tagsOf(name){ var t = TAGS[name]; return (t && t.length) ? t : []; }
+function toggleTag(name, tag){
+  var t = tagsOf(name).slice(), i = t.indexOf(tag);
+  if (i >= 0) t.splice(i, 1); else t.push(tag);
+  if (t.length) TAGS[name] = t; else delete TAGS[name];
+  saveTags();
+}
+/** 目前用得到的標註清單：預設四個 + 你自己加過的，附上各自標了幾家 */
+function tagCounts(){
+  var c = {};
+  TAG_PRESETS.forEach(function(t){ c[t] = 0; });
+  Object.keys(TAGS).forEach(function(nm){ tagsOf(nm).forEach(function(t){ c[t] = (c[t] || 0) + 1; }); });
+  return c;
+}
 
 /* -------------------- 品項分類（沿用 Excel 版的定義） -------------------- */
 var P2_NAMES = ['TEARS NATURALE II 15ML/20ML','TEARS NATURALE FREE 32S','DURATEARS OINTMENT 3.5GM'];
@@ -1260,9 +1323,18 @@ function ingestSalesRows(kind, header, rowIter, col){
     };
   } else {
     idx = {
+      // 青光眼金額固定用 GE資料 的 M 欄「Net Sales Amount」，不碰 S 欄「Discount」。
+      // 實測：折讓是獨立的列（那些列 Net Sales Amount＝0，會被下面的 amt===0 濾掉），
+      // 有金額的 633 列 Discount 一律為 0，所以加總 M 欄不會重複扣到折讓。
       cust: h.indexOf('Customer Name'), prod: h.indexOf('Item Description'), amt: h.indexOf('Net Sales Amount'),
       chan: h.indexOf('Customer Channel'),
-      mk: h.indexOf('Month') >= 0 ? h.indexOf('Month') : h.indexOf('Sales Period'),
+      // 月份一定要用 C 欄「Sales Period」，不能用 D 欄「Month」。
+      // GE資料有兩個月份欄，約 4% 的列兩邊不一致（跨期的退貨／更正：例如 7 月的退貨
+      // 在 8 月的 ON3 檔被拋出來，Sales Period=202608 但 Month=202607）。
+      // 逐月對過 Excel 版「Product_Monthly / GE(NVS) ALL」：依 C 欄每個月都到個位數相符
+      // （2026/8＝997,143、2026/7＝898,041），依 D 欄則每個月都對不上（8 月只有 892,173）。
+      // 這個結論與 Excel 版第 12 輪的修正一致（GE_COL MonthKey 取 C 欄），這裡補上同樣的修正。
+      mk: h.indexOf('Sales Period') >= 0 ? h.indexOf('Sales Period') : h.indexOf('Month'),
       year: h.indexOf('Year'), period: h.indexOf('Period'), date: h.indexOf('Transaction Date')
     };
   }
@@ -1565,8 +1637,17 @@ function customerRows(pids, setMonth, limit){
     : function(a,b){ return b.y2 - a.y2; });
   var total = rows.reduce(function(s,r){ return s + r.y2; }, 0) || 1;
   var run = 0;
-  rows.forEach(function(r){ run += r.y2; r.cumShare = run / total; r.share = r.y2 / total; });
-  return { rows: rows.slice(0, limit || 20), total: total, count: rows.length };
+  // 名次一律以「完整排名」為準：即使等一下被搜尋或標註篩掉，看到的仍是這家在整個範圍裡的真實名次
+  rows.forEach(function(r, i){ run += r.y2; r.cumShare = run / total; r.share = r.y2 / total; r.rank = i + 1; });
+
+  var out = rows, q = String(state.custSearch || '').trim().toLowerCase();
+  if (state.tagFilter) out = out.filter(function(r){ return tagsOf(r.name).indexOf(state.tagFilter) >= 0; });
+  if (q) out = out.filter(function(r){ return r.name.toLowerCase().indexOf(q) >= 0; });
+  var narrowed = !!(state.tagFilter || q);
+  return {
+    rows: out.slice(0, narrowed ? 100 : (limit || 20)),   // 搜尋／標註模式下不受 Top 20 限制
+    total: total, count: rows.length, matched: out.length, narrowed: narrowed
+  };
 }
 
 /** 單一客戶的品項明細：這家客戶在目前類別範圍內，每個品項今年/去年 YTD 各是多少。
@@ -1679,7 +1760,9 @@ var state = {
   includeExcluded:false,   // 停用品項（Balance／HA 5CT／Travatan）預設不列入計算
   kpiCollapsed:false,
   mobileFilters:false,     // 手機且 KPI 釘在上方時，篩選列是否展開
-  showMerge:false          // 頁尾「客戶名稱合併檢查」是否展開
+  showMerge:false,         // 頁尾「客戶名稱合併檢查」是否展開
+  custSearch:'',           // 客戶名稱搜尋
+  tagFilter:null           // 只看某個標註的客戶
 };
 
 /** 大分類（系列）選項；只列出這份資料真的有的，別人的檔案沒有的系列不會空著佔位 */
@@ -2119,7 +2202,7 @@ function renderSkuPicker(){
   sel.innerHTML = '';
   var head = document.createElement('option');
   head.value = '';
-  head.textContent = state.skus.length ? '＋ 再加一個品項比較…' : '全部（' + categoryProducts().length + ' 項）— 選一個往下鑽';
+  head.textContent = state.skus.length ? '＋ 再加一個品項比較…' : '全部（' + categoryProducts().length + ' 項）— 選一個品項分析';
   sel.appendChild(head);
   opts.forEach(function(p){
     var o = document.createElement('option'); o.value = p.i;
@@ -2187,8 +2270,8 @@ function growthCard(label, sub, s, key){
     '</div>';
 }
 
-/** 常駐的「全公司」列：一行，鑽到任何品項都不會消失，
-    所以 KPI 六格可以專心跟著所選範圍走，不必再多放一組全公司卡片。 */
+/** 常駐的「全產品業績」列：一行，挑到任何品項都不會消失，
+    所以 KPI 六格可以專心跟著所選範圍走，不必再多放一組全產品的卡片。 */
 function renderGlobalStrip(){
   var m = state.setMonth, allIds = allProductIds(), ids = scopeIds();
   var g = periodStats(allIds, 1, m), gm = periodStats(allIds, m, m);
@@ -2197,16 +2280,16 @@ function renderGlobalStrip(){
   var aCls = g.achievement == null ? '' : g.achievement >= 1 ? 'good' : g.achievement < 0.9 ? 'critical' : '';
   var yCls = g.yoy == null ? '' : g.yoy >= 0 ? 'good' : 'critical';
   document.getElementById('globalStrip').innerHTML =
-    '<span class="gs-tag">全公司 · 全部品項</span>' +
+    '<span class="gs-tag">全產品業績</span>' +
     '<span class="gs-item">YTD 達成率 ' + num(pct(g.achievement, 0), aCls) + '</span>' +
     '<span class="gs-item">YTD 實績 ' + num(compact(g.actual)) + '<span>／目標 ' + compact(g.target) + '</span></span>' +
     '<span class="gs-item">YoY ' + num(pctSigned(g.yoy), yCls) + '</span>' +
     '<span class="gs-item">第 ' + m + ' 月 ' + num(pct(gm.achievement, 0)) + '</span>' +
-    '<span class="gs-note">' + (scoped ? '下方 KPI／趨勢／缺口／Top20 已鑽到：' + scopeLabel() : '下方即為全公司，可用上方篩選往下鑽') + '</span>';
+    '<span class="gs-note">' + (scoped ? '下方 KPI／趨勢／缺口／Top20 已鑽到：' + scopeLabel() : '下方即為全產品業績，可用上方篩選挑品項分析') + '</span>';
 }
 
 /** 收合後釘在篩選列下方的迷你 KPI 條：六個指標跟著「目前選的範圍」走，
-    右邊再附一個全公司 YTD 當定位點。往下捲去看缺口表或 Top20 時都還在眼前。 */
+    右邊再附一個全產品 YTD 當定位點。往下捲去看缺口表或 Top20 時都還在眼前。 */
 function renderKpiDock(mtd, qtd, ytd){
   var dock = document.getElementById('kpiDock');
   if (!dock) return;
@@ -2251,8 +2334,8 @@ function renderKpiDock(mtd, qtd, ytd){
       achChip('YTD', ytd, '累計第 1–' + m + ' 月達成率') +
       grChip('YGR', ytd, 'YTD vs. 去年同期') +
       (scoped ? '<span class="dock-sep"></span>' +
-                chip('全公司 YTD', pct(g.achievement, 0), achCls(g.achievement),
-                     '全部品項的 YTD 達成率，當作定位點', ' is-global') : '') +
+                chip('全產品 YTD', pct(g.achievement, 0), achCls(g.achievement),
+                     '全產品業績的 YTD 達成率，當作定位點', ' is-global') : '') +
     '</span>' +
     '<button type="button" class="btn tiny" id="dockExpand">展開 KPI ▾</button>';
 
@@ -2376,7 +2459,7 @@ function renderGapTable(){
   var rows = gapRows(ids, state.setMonth, chan);
   if (state.gapOnlySel && state.skus.length) rows = rows.filter(function(r){ return selSet[r.pi]; });
   if (state.gapSort === 'order') rows.sort(function(a, b){ return (a.ord - b.ord) || (b.actual - a.actual); });
-  // 已選的品項永遠釘在最上面，往下鑽的時候不用再去表裡找
+  // 已選的品項永遠釘在最上面，分析的時候不用再去表裡找
   if (state.skus.length && !state.gapOnlySel){
     rows.sort(function(a, b){ return (selSet[b.pi] ? 1 : 0) - (selSet[a.pi] ? 1 : 0); });
   }
@@ -2392,7 +2475,7 @@ function renderGapTable(){
   var catLabel = state.category === 'ALL' ? '全部產品' : (state.category === 'DED' ? '人工淚液 DED' : '青光眼 GE');
   catLabel += filterSuffix();
   document.getElementById('gapScopeHint').textContent =
-    (chan ? CHANNEL_LABEL[chan] + '｜' : '') + catLabel + '（' + rows.length + ' 項）· 點任一列即可往下鑽' +
+    (chan ? CHANNEL_LABEL[chan] + '｜' : '') + catLabel + '（' + rows.length + ' 項）· 點任一列即可分析該品項' +
     (chan ? '（通路別沒有目標，改看 YoY）' : (IDX.hasTargets ? '' : '（尚未上傳目標，僅顯示實績）'));
 
   if (!rows.length){ document.getElementById('gapTableBody').innerHTML = '<tr><td colspan="8" class="empty-note">此範圍沒有資料</td></tr>'; return; }
@@ -2407,7 +2490,7 @@ function renderGapTable(){
             : r.yoy >= 0.1 ? '成長中' : r.yoy <= -0.1 ? '衰退，需追蹤' : '持平';
     } else {
       cls = stateFor(r.achievement);
-      label = r.achievement == null ? '未上傳目標' : r.achievement >= 1 ? '已達標，避免塞貨' : r.achievement < 0.9 ? '尚有缺口，評估回補' : '接近目標';
+      label = r.achievement == null ? '未上傳目標' : r.achievement >= 1 ? '已達標，控制出貨' : r.achievement < 0.9 ? '尚有缺口，評估回補' : '接近目標';
     }
     var on = !!selSet[r.pi];
     var head = '<td class="name"><span class="pick">' + (on ? '◉' : '○') + '</span> ' + esc(r.name) +
@@ -2494,6 +2577,24 @@ function customerSparkline(series, setMonth, accent){
     '</svg>';
 }
 
+/** 客戶標註編輯區：點一下加上／取消，也可以自己輸入新的標註名稱。
+    標註是存在瀏覽器裡、以客戶名稱為索引的另一份資料，重新上傳原始檔不會消失。 */
+function tagEditorHtml(name){
+  var mine = tagsOf(name);
+  var all = Object.keys(tagCounts());
+  var btns = all.map(function(t){
+    var on = mine.indexOf(t) >= 0;
+    return '<button type="button" class="tag-btn' + (on ? ' on' : '') + '" data-tag="' + esc(t) + '">' +
+           (on ? '🔖 ' : '＋ ') + esc(t) + '</button>';
+  }).join('');
+  return '<div class="tag-edit">' +
+    '<span class="tag-edit-label">標註這家客戶</span>' + btns +
+    '<input type="text" class="tag-new" placeholder="自訂標註…" maxlength="12" data-newtag="1" />' +
+    '<span class="tag-note">標註只存在你自己的瀏覽器，<b>每個月重新上傳原始檔也不會消失</b>；' +
+    '標好之後可以用上面的「🔖」按鈕，一次把同一類要追蹤的客戶調出來看。</span>' +
+  '</div>';
+}
+
 /** 點開某個客戶後，在該列下方展開的品項明細 */
 function customerDetailHtml(row){
   var pids = categoryProducts().map(function(p){ return p.i; });   // 忽略「單品」篩選，看這家客戶的完整品項組合
@@ -2543,6 +2644,7 @@ function customerDetailHtml(row){
       '</div>' +
       '<button class="btn ghost detail-close" data-close="1" title="收合">✕</button>' +
     '</div>' +
+    tagEditorHtml(row.name) +
     (selCount
       ? '<p class="detail-note">上方已選的 ' + selCount + ' 個品項標在最前面；下面仍列出這家客戶的完整品項組合，方便拜訪前一起看。</p>'
       : '') +
@@ -2552,26 +2654,78 @@ function customerDetailHtml(row){
   '</div></td></tr>';
 }
 
+/** 搜尋框：輸入時只重畫客戶區塊，不整頁重render，才不會每打一個字就失焦 */
+function renderCustTools(){
+  var box = document.getElementById('custSearch');
+  if (box && box.value !== state.custSearch) box.value = state.custSearch;
+  if (box && !box._wired){
+    box._wired = true;
+    box.addEventListener('input', function(){ state.custSearch = box.value; state.openCustomer = null; renderCustomers(); });
+    box.addEventListener('keydown', function(e){ if (e.key === 'Escape'){ box.value = ''; state.custSearch = ''; renderCustomers(); } });
+  }
+  var clr = document.getElementById('custSearchClear');
+  if (clr){
+    clr.hidden = !state.custSearch;
+    if (!clr._wired){ clr._wired = true;
+      clr.onclick = function(){ state.custSearch = ''; document.getElementById('custSearch').value = ''; renderCustomers(); }; }
+  }
+  // 標註篩選：預設四個 + 你自己加過的，括號是已標註幾家
+  var counts = tagCounts(), el = document.getElementById('tagFilterPills');
+  el.innerHTML = '';
+  Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a] || (a < b ? -1 : 1); }).forEach(function(t){
+    var b = document.createElement('button');
+    b.className = 'pill tag-pill';
+    b.innerHTML = '🔖 ' + esc(t) + '<span class="cnt">' + counts[t] + '</span>';
+    b.title = counts[t] ? '只看標了「' + t + '」的客戶' : '還沒有客戶標「' + t + '」（點開任一客戶即可標註）';
+    b.setAttribute('aria-pressed', String(state.tagFilter === t));
+    b.onclick = function(){
+      state.tagFilter = (state.tagFilter === t) ? null : t;
+      state.openCustomer = null; renderCustomers();
+    };
+    el.appendChild(b);
+  });
+  if (state.tagFilter){
+    var r = document.createElement('button');
+    r.className = 'pill tag-pill'; r.textContent = '✕ 取消標註篩選';
+    r.onclick = function(){ state.tagFilter = null; renderCustomers(); };
+    el.appendChild(r);
+  }
+}
+
 function renderCustomers(){
   renderCustSortPills();
+  renderCustTools();
   var ids = scopeIds();
   var res = customerRows(ids, state.setMonth, 20);
   document.getElementById('custScopeHint').textContent =
     (state.channel ? '通路：' + CHANNEL_LABEL[state.channel] + '｜' : '') + scopeLabel() +
     (state.category === 'ALL' ? '（DED+GE 合計；Excel 版是 DED、GE 分開排名，切上方類別即可逐列對照）' : '');
+  var title = document.getElementById('custPanelTitle');
+  if (title) title.textContent = res.narrowed ? '客戶／院所查詢結果（YTD）' : 'Top 20 客戶／院所排行（YTD）';
   var callout = document.getElementById('top20Callout');
   if (!res.rows.length){
-    callout.textContent = '此範圍沒有客戶資料。';
+    callout.textContent = res.narrowed
+      ? '這個範圍裡沒有符合的客戶' + (state.custSearch ? '（搜尋：「' + state.custSearch + '」）' : '') +
+        '。可以換個關鍵字，或把上方的類別／品項改成「全部」再找一次。'
+      : '此範圍沒有客戶資料。';
     document.getElementById('custTableBody').innerHTML = '<tr><td colspan="7" class="empty-note">此範圍沒有資料</td></tr>';
     document.getElementById('channelBars').innerHTML = '<p class="empty-note">此範圍沒有資料</p>';
     return;
   }
-  var hitIdx = -1;
-  res.rows.forEach(function(r, i){ if (hitIdx < 0 && r.cumShare >= 0.8) hitIdx = i; });
-  var last = res.rows[res.rows.length - 1];
-  callout.innerHTML = hitIdx >= 0
-    ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的業績（共 ' + res.count + ' 家有交易）'
-    : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表業績分散在 ' + res.count + ' 家客戶。';
+  if (res.narrowed){
+    var sumY2 = res.rows.reduce(function(a, r){ return a + r.y2; }, 0);
+    callout.innerHTML = '🔎 在此範圍的 ' + res.count + ' 家客戶中找到 <b>' + res.matched + '</b> 家' +
+      (state.custSearch ? '（搜尋：「' + esc(state.custSearch) + '」）' : '') +
+      (state.tagFilter ? '（標註：' + esc(state.tagFilter) + '）' : '') +
+      '，合計今年 YTD <b>' + compact(sumY2) + '</b>，佔此範圍 <b>' + pct(sumY2 / res.total, 1) + '</b>。左邊的名次是他在完整排名裡的真實名次。';
+  } else {
+    var hitIdx = -1;
+    res.rows.forEach(function(r, i){ if (hitIdx < 0 && r.cumShare >= 0.8) hitIdx = i; });
+    var last = res.rows[res.rows.length - 1];
+    callout.innerHTML = hitIdx >= 0
+      ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的業績（共 ' + res.count + ' 家有交易）'
+      : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表業績分散在 ' + res.count + ' 家客戶。';
+  }
   // 目前展開的客戶若已不在這個範圍的名單裡，就自動收合
   if (state.openCustomer != null && !res.rows.some(function(r){ return r.ci === state.openCustomer; })) state.openCustomer = null;
 
@@ -2580,14 +2734,17 @@ function renderCustomers(){
   var custHidden = res.rows.length - custLimit;
   tbody.innerHTML = res.rows.slice(0, custLimit).map(function(r, i){
     var prev = i > 0 ? res.rows[i-1].cumShare : 0;
-    var hit = r.cumShare >= 0.8 && prev < 0.8;
+    var hit = !res.narrowed && r.cumShare >= 0.8 && prev < 0.8;
     var open = state.openCustomer === r.ci;
+    var myTags = tagsOf(r.name);
     var cls = ['cust-row'];
     if (hit) cls.push('cum-hit');
     if (open) cls.push('is-open');
+    if (myTags.length) cls.push('is-tagged');
+    var tagHtml = myTags.map(function(t){ return '<span class="tag-badge">🔖 ' + esc(t) + '</span>'; }).join('');
     var main = '<tr class="' + cls.join(' ') + '" data-ci="' + r.ci + '" tabindex="0" role="button" aria-expanded="' + open + '" title="點一下看這家客戶的品項明細">' +
-      '<td class="num rank-cell" data-l="排名">' + (i+1) + '</td>' +
-      '<td class="name"><span class="rank-inline">' + (i+1) + '.</span> <span class="disclose">' + (open ? '▾' : '▸') + '</span>' + esc(r.name) + '</td>' +
+      '<td class="num rank-cell" data-l="排名">' + r.rank + '</td>' +
+      '<td class="name"><span class="rank-inline">' + r.rank + '.</span> <span class="disclose">' + (open ? '▾' : '▸') + '</span>' + esc(r.name) + tagHtml + '</td>' +
       '<td data-l="通路" title="原始標籤：' + esc(r.rawChannel || '—') + '">' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
       '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
       '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
@@ -2600,7 +2757,7 @@ function renderCustomers(){
   var custMore = document.getElementById('custShowMore');
   if (custMore){
     custMore.innerHTML = '';
-    if (isNarrow() && (custHidden > 0 || state.showAllCust)){
+    if (isNarrow() && !res.narrowed && (custHidden > 0 || state.showAllCust)){
       var cb = document.createElement('button');
       cb.className = 'btn show-more';
       cb.textContent = state.showAllCust ? '只顯示前 8 名 ▲' : '顯示到第 ' + res.rows.length + ' 名 ▼';
@@ -2619,6 +2776,32 @@ function renderCustomers(){
     tr.addEventListener('click', toggle);
     tr.addEventListener('keydown', function(e){
       if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+    });
+  });
+  // 標註按鈕：加上／取消後只重畫客戶區塊，維持展開狀態
+  Array.prototype.forEach.call(tbody.querySelectorAll('.tag-btn[data-tag]'), function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var tr = btn.closest('tr.detail-row').previousElementSibling;
+      var ci = +tr.getAttribute('data-ci');
+      var c = IDX.customers[ci];
+      if (c) toggleTag(c.name, btn.getAttribute('data-tag'));
+      renderCustomers();
+    });
+  });
+  Array.prototype.forEach.call(tbody.querySelectorAll('input[data-newtag]'), function(inp){
+    inp.addEventListener('click', function(e){ e.stopPropagation(); });
+    inp.addEventListener('keydown', function(e){
+      e.stopPropagation();
+      if (e.key !== 'Enter') return;
+      var v = inp.value.trim();
+      if (!v) return;
+      var tr = inp.closest('tr.detail-row').previousElementSibling;
+      var ci = +tr.getAttribute('data-ci');
+      var c = IDX.customers[ci];
+      if (c && tagsOf(c.name).indexOf(v) < 0) toggleTag(c.name, v);
+      inp.value = '';
+      renderCustomers();
     });
   });
   Array.prototype.forEach.call(tbody.querySelectorAll('[data-close]'), function(btn){
@@ -2712,6 +2895,10 @@ function renderSourceBar(){
       : '') +
     '上傳的檔案完全在你自己的瀏覽器裡解析與保存（localStorage），沒有送到伺服器，<b>把這個連結分享給同事，他看到的也只會是示範資料</b>，他可以直接上傳自己的檔案來用——等於 Excel 版「通用套版」的網頁版。' +
     '計算邏輯沿用 Excel 版「DEOH_銷售動態儀表板」：YTD／QTD／MTD、缺口與達成率、Top20 集中度、同院所不同送貨點合併。' +
+    '業績金額來源：人工淚液取 <code>DED資料</code> 的「Sales」欄；青光眼取 <code>GE資料</code> 的「Net Sales Amount」（M 欄），' +
+    '兩者都<b>不含折讓（Discount）</b>——GE 檔的折讓是獨立的列、Net Sales Amount 為 0，會一併略過。' +
+    '月份歸屬：GE 依 <code>Sales Period</code>（C 欄）而非 <code>Month</code>（D 欄），跨期的退貨／更正才會落在正確的月份，與 Excel 版一致。' +
+    '客戶標註（🔖）以客戶名稱為索引、與業績資料分開存放，每月重新上傳原始檔或清除資料都不會消失。' +
     '合併規則不含任何寫死的客戶名稱，是用通用部門字樣加上這份檔案自己的客戶名單互相比對推出來的，' +
     '實際併了哪些請看上方「客戶名稱合併檢查」。' +
     '通路分類：DED 依 <code>Customer classification</code>（Medical Facility＝醫院、Diagnostic Facility＋Retail＝診所、Pharmacy Independent＝獨立藥局、Pharmacy Retail＝其他連鎖藥局）；' +
@@ -2806,9 +2993,9 @@ function wireUpload(){
   bar.addEventListener('drop', function(e){ handleFiles(e.dataTransfer.files); });
 
   document.getElementById('resetBtn').onclick = function(){
-    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    try { localStorage.removeItem(LS_KEY); } catch(e){}   // 只清業績資料，客戶標註刻意保留
     setData(buildDemoDataset(), false);
-    status('已清除這台電腦上的資料，回到示範資料。');
+    status('已清除這台電腦上的業績資料，回到示範資料（客戶標註仍然保留）。');
   };
 }
 
@@ -2822,6 +3009,7 @@ window.addEventListener('resize', function(){
 });
 
 // 先用示範資料把畫面畫出來（頁面一打開就是可用狀態），再換成這台電腦上存過的資料
+TAGS = loadTags();          // 客戶標註：與資料分開存，重新上傳不會被蓋掉
 var stored = loadStored();
 setData(stored || buildDemoDataset(), false);
 wireUpload();
