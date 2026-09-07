@@ -90,6 +90,10 @@
   .pill:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
   .pill[aria-pressed="true"]{ background:var(--accent-ded); border-color:var(--accent-ded); color:#fff; }
   .pill.ge[aria-pressed="true"]{ background:var(--accent-ge); border-color:var(--accent-ge); }
+  /* 第二層（視舒坦細分）做小一號、虛線邊，一眼看得出是附屬在系列底下的 */
+  .pill.leaf{ font-size:12px; padding:5px 11px; border-style:dashed; }
+  .pill.leaf[aria-pressed="true"]{ background:var(--accent-ded); border-color:var(--accent-ded); color:#fff; border-style:solid; }
+  #leafLabel::before{ content:'↳ '; color:var(--border-strong); }
   .fdivider{ width:1px; align-self:stretch; background:var(--border); }
 
   /* ---------- data source panel ---------- */
@@ -114,9 +118,11 @@
   .panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); }
 
   /* ---------- KPI ---------- */
-  .kpi-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-  @media (max-width:1180px) and (min-width:921px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
-  .kpi-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border-strong); border-radius:var(--radius-md); padding:15px 18px; box-shadow:var(--shadow); }
+  /* KPI：桌機一排六格（達成率／成長率兩兩相鄰），高度只佔原本的一半，
+     往下捲一點就能同時看到趨勢圖。窄一點就退成兩欄，MTD/MGR 仍在同一排。 */
+  .kpi-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+  @media (max-width:1320px) and (min-width:921px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+  .kpi-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border-strong); border-radius:var(--radius-md); padding:11px 13px; box-shadow:var(--shadow); }
   .kpi-card.state-good{ border-left-color:var(--good); }
   .kpi-card.state-critical{ border-left-color:var(--critical); }
   .kpi-card.state-watch{ border-left-color:var(--watch); }
@@ -128,19 +134,83 @@
   .kpi-badge.critical{ background:var(--critical-soft); color:var(--critical); }
   .kpi-badge.watch{ background:var(--watch-soft); color:var(--watch); }
   .kpi-badge.none{ background:var(--surface-2); color:var(--ink-faint); }
-  .kpi-value{ font-size:30px; font-weight:600; margin:8px 0 1px; letter-spacing:-.01em; }
+  .kpi-value{ font-size:24px; font-weight:600; margin:5px 0 1px; letter-spacing:-.01em; }
   .kpi-value.pos{ color:var(--good); } .kpi-value.neg{ color:var(--critical); }
   .kpi-value .unit{ font-size:13px; color:var(--ink-faint); font-family:'IBM Plex Sans',sans-serif; margin-left:3px; }
   .kpi-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:2px; }
-  .kpi-meta{ display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--ink-muted); margin-top:7px; }
+  .kpi-meta{ display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--ink-muted); margin-top:6px; flex-wrap:wrap; }
   .gap-behind{ color:var(--critical); font-weight:600; }
   .gap-ahead{ color:var(--good); font-weight:600; }
   .yoy.up{ color:var(--good); font-weight:600; } .yoy.down{ color:var(--critical); font-weight:600; }
-  .progress{ height:6px; border-radius:99px; background:var(--surface-2); margin-top:10px; overflow:hidden; }
+  .progress{ height:5px; border-radius:99px; background:var(--surface-2); margin-top:7px; overflow:hidden; }
   .progress > i{ display:block; height:100%; border-radius:99px; background:var(--accent-ded); }
   .kpi-card.state-critical .progress > i{ background:var(--critical); }
   .kpi-card.state-good .progress > i{ background:var(--good); }
   .kpi-card.state-watch .progress > i{ background:var(--watch); }
+
+  /* 常駐的「全公司」列：不管往下鑽到哪一個品項，全盤數字都還在眼前 */
+  .global-strip{ display:flex; align-items:center; gap:8px 16px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent-ded);
+    border-radius:var(--radius-md); padding:9px 14px; margin-bottom:11px; box-shadow:var(--shadow); font-size:12.5px; }
+  .global-strip .gs-tag{ font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); }
+  .global-strip .gs-item{ display:flex; align-items:baseline; gap:5px; color:var(--ink-muted); }
+  .global-strip .gs-item b{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; font-size:14px; font-weight:600; color:var(--ink); }
+  .global-strip .gs-item b.good{ color:var(--good); } .global-strip .gs-item b.critical{ color:var(--critical); }
+  .global-strip .gs-note{ margin-left:auto; font-size:11px; color:var(--ink-faint); }
+  .btn.tiny{ font-size:11.5px; padding:3px 10px; }
+
+  /* 收合後的 KPI：跟篩選列黏在一起釘在畫面上方，往下看客戶/缺口時
+     六個指標仍然跟著目前選的範圍走，不會只剩全公司一個數字。 */
+  .kpi-dock{ max-width:1320px; margin:0 auto; padding:7px 24px 9px;
+             display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; border-top:1px dashed var(--border); }
+  .dock-scope{ font-size:11.5px; font-weight:600; color:var(--ink); flex:0 0 auto;
+               max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dock-scope .dock-tag{ font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+                         color:var(--ink-faint); margin-right:6px; }
+  .dock-items{ display:flex; gap:6px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
+  .dock-kpi{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+             font-size:11px; color:var(--ink-faint); background:var(--surface-2);
+             border-radius:999px; padding:3px 10px; }
+  .dock-kpi b{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;
+               font-size:13px; font-weight:600; color:var(--ink); }
+  /* 達成率＝主角：整顆藥丸依狀態上色、數字放大加粗，掃一眼就知道紅或綠 */
+  .dock-kpi.ach{ padding:3px 11px 3px 8px; font-weight:700; border:1px solid transparent; }
+  .dock-kpi.ach b{ font-size:16px; font-weight:700; color:inherit; letter-spacing:-.01em; }
+  .dock-kpi.ach .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; flex:0 0 auto; }
+  .dock-kpi.ach.good{ background:var(--good-soft); color:var(--good); border-color:color-mix(in srgb, var(--good) 30%, transparent); }
+  .dock-kpi.ach.watch{ background:var(--watch-soft); color:var(--watch); border-color:color-mix(in srgb, var(--watch) 30%, transparent); }
+  .dock-kpi.ach.critical{ background:var(--critical-soft); color:var(--critical); border-color:color-mix(in srgb, var(--critical) 35%, transparent); }
+  .dock-kpi.ach.none{ background:var(--surface-2); color:var(--ink-faint); }
+  /* 成長率＝配角：不搶戲，只用箭頭與顏色帶過 */
+  .dock-kpi.gr{ background:transparent; padding:3px 8px; }
+  .dock-kpi.gr b{ font-size:12.5px; font-weight:600; }
+  .dock-kpi.gr b.good{ color:var(--good); } .dock-kpi.gr b.critical{ color:var(--critical); }
+  .dock-kpi.is-global{ background:transparent; border:1px dashed var(--border-strong); color:var(--ink-faint); font-weight:600; }
+  .dock-kpi.is-global b{ font-size:13px; }
+  .dock-sep{ width:1px; align-self:stretch; background:var(--border); flex:0 0 auto; margin:0 2px; }
+  .kpi-dock .btn.tiny{ flex:0 0 auto; }
+
+  /* 品項複選：下拉是「加入」，已選的用晶片顯示，點 ✕ 移除 */
+  .fgroup-sku{ flex-wrap:wrap; }
+  .skuchips{ display:flex; gap:5px; flex-wrap:wrap; }
+  .skuchip{ font-family:inherit; font-size:11.5px; font-weight:600; padding:4px 8px 4px 10px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--accent-ded); background:var(--accent-ded-soft); color:var(--accent-ded); display:inline-flex; align-items:center; gap:6px; }
+  .skuchip.ge{ border-color:var(--accent-ge); background:var(--accent-ge-soft); color:var(--accent-ge); }
+  .skuchip .x{ font-size:10px; opacity:.7; }
+  .skuchip:hover .x{ opacity:1; }
+  .skuchip.clear{ border-color:var(--border-strong); background:var(--surface); color:var(--ink-muted); }
+  .fcheck{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-muted); cursor:pointer; white-space:nowrap; }
+  .fcheck input{ accent-color:var(--accent-ded); }
+
+  /* 缺口表：整列可點，點了就把 KPI／趨勢／Top20 全部鑽到那個品項 */
+  tr.gap-row{ cursor:pointer; }
+  tr.gap-row:hover{ background:var(--surface-2); }
+  tr.gap-row.is-sel{ background:var(--accent-ded-soft); }
+  tr.gap-row.is-sel td{ font-weight:600; }
+  tr.gap-row .pick{ display:inline-block; width:13px; color:var(--ink-faint); }
+  tr.gap-row.is-sel .pick{ color:var(--accent-ded); }
+  tr.gap-row.excl td.name{ color:var(--ink-faint); }
+  .tag.excl{ background:var(--surface-2); color:var(--ink-faint); }
 
   /* ---------- charts ---------- */
   .chart-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -189,6 +259,7 @@
   tr.cust-row:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:-2px; }
   tr.cust-row.is-open td{ background:var(--accent-ded-soft); }
   .disclose{ display:inline-block; width:14px; color:var(--ink-faint); font-size:10px; }
+  .rank-inline{ display:none; }   /* 桌機有獨立的 # 欄，這個只在手機卡片模式出現 */
   tr.cust-row.is-open .disclose{ color:var(--accent-ded); }
   tr.detail-row > td{ padding:0 0 14px; background:var(--surface); }
   .detail-wrap{ border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-2); padding:14px 16px; }
@@ -210,6 +281,10 @@
   table.detail-table thead th{ padding:8px 12px; }
   table.detail-table tbody td{ padding:7px 12px; }
   table.detail-table tbody tr:hover td{ background:var(--surface-2); }
+  .detail-note{ font-size:11px; color:var(--ink-faint); margin:0 0 7px; line-height:1.6; }
+  table.detail-table tr.is-sel td{ background:var(--accent-ded-soft); font-weight:600; }
+  table.detail-table tr.is-sel td.name{ box-shadow:inset 3px 0 0 var(--accent-ded); }
+  table.detail-table tbody tr.is-sel:hover td{ background:var(--accent-ded-soft); }
   .mini-badge{ display:inline-block; font-size:10px; font-weight:600; padding:1px 6px; border-radius:5px; margin-left:4px; }
   .mini-badge.good{ background:var(--good-soft); color:var(--good); }
   .mini-badge.critical{ background:var(--critical-soft); color:var(--critical); }
@@ -226,7 +301,18 @@
   .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
   .panel-head h3{ margin:0; }
   .panel-head .pill{ padding:3px 10px; font-size:11.5px; }
-  .chan-row{ display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+  .chan-row{ display:flex; align-items:center; gap:10px; margin-bottom:11px; width:100%; text-align:left;
+             background:transparent; border:1px solid transparent; border-radius:var(--radius-sm);
+             padding:5px 7px; font:inherit; color:inherit; cursor:pointer; transition:background .12s,border-color .12s; }
+  .chan-row:hover{ border-color:var(--border-strong); background:var(--surface-2); }
+  .chan-row:focus-visible{ outline:2px solid var(--accent-ded); outline-offset:1px; }
+  .chan-row.is-on{ border-color:var(--accent-ded); background:var(--accent-ded-soft);
+                   box-shadow:inset 3px 0 0 var(--accent-ded); }
+  .chan-on-flag{ display:inline-block; margin-left:6px; font-size:9.5px; font-weight:600; letter-spacing:.03em;
+                 color:#fff; background:var(--accent-ded); border-radius:99px; padding:1px 6px; vertical-align:1px; }
+  .chan-row.is-on .chan-label{ color:var(--ink); font-weight:600; }
+  .chan-reset{ width:100%; margin-top:4px; font-size:12px; }
+  .chan-tip{ font-size:11px; color:var(--ink-faint); line-height:1.6; margin:8px 0 0; }
   .chan-row:last-child{ margin-bottom:0; }
   .chan-label{ width:96px; font-size:12px; color:var(--ink-muted); flex-shrink:0; }
   .chan-bar-track{ flex:1; height:16px; border-radius:5px; background:var(--surface-2); overflow:hidden; min-width:40px; }
@@ -235,11 +321,21 @@
   .chan-figs .amt{ color:var(--ink); font-weight:600; font-size:12.5px; }
   .callout{ font-size:12.5px; color:var(--ink-muted); background:var(--surface-2); border-radius:var(--radius-sm); padding:9px 13px; margin:0 0 13px; }
   .callout b{ color:var(--ink); }
+  .merge-intro{ font-size:12px; color:var(--ink-muted); line-height:1.7; margin:0; padding:14px 18px 4px; }
+  .merge-list{ padding:8px 18px 16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; }
+  .merge-item{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px; background:var(--surface-2); }
+  .merge-to{ font-size:13px; font-weight:700; margin-bottom:5px; }
+  .merge-from{ font-size:11.5px; color:var(--ink-muted); line-height:1.75; }
+  .merge-from li{ list-style:none; }
+  .merge-from li::before{ content:'↳ '; color:var(--ink-faint); }
+  .merge-from ul{ margin:0; padding:0; }
   .empty-note{ font-size:12.5px; color:var(--ink-faint); padding:22px 14px; text-align:center; }
   footer.note{ margin-top:38px; font-size:11.5px; color:var(--ink-faint); border-top:1px solid var(--border); padding-top:14px; line-height:1.7; }
 
   @media (max-width:920px){
-    .kpi-grid,.chart-grid,.cust-grid{ grid-template-columns:1fr; }
+    .chart-grid,.cust-grid{ grid-template-columns:1fr; }
+    /* KPI 一律維持兩欄，MTD/MGR、QTD/QGR、YTD/YGR 才會兩兩同排 */
+    .kpi-grid{ grid-template-columns:1fr 1fr; gap:9px; }
   }
 
   /* 平板寬度：通路面板變窄時，固定 158px 的數字欄會把版面撐出畫面 → 改成可換行 */
@@ -275,6 +371,26 @@
     .fdivider{ display:none; }
     select.fselect{ flex:1 1 auto; width:100%; min-width:0; max-width:100%; min-height:38px; font-size:13px; }
     .fgroup{ min-width:0; }
+    /* 手機螢幕小：釘住 KPI 時預設把篩選那幾列收起來，只留一顆「篩選」按鈕，
+       整個釘住的區塊才不會佔掉半個畫面（點一下就能把篩選叫回來）。 */
+    .filterbar.filters-hidden .filterbar-inner{ display:none; }
+    .filterbar.filters-hidden .kpi-dock{ border-top:none; }
+    .kpi-dock{ padding:7px 12px 8px; gap:6px; }
+    .dock-filters{ order:-1; }
+    .dock-scope{ width:100%; max-width:100%; font-size:11px; }
+    .dock-items{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:1px; }
+    .dock-items::-webkit-scrollbar{ display:none; }
+    .dock-kpi{ flex:0 0 auto; }
+    .dock-kpi.ach b{ font-size:15px; }
+    .dock-sep{ display:none; }
+    .fgroup-sku{ flex-wrap:wrap; }
+    .skuchips{ width:100%; }
+    .skuchip{ font-size:11px; min-height:30px; }
+    .global-strip{ gap:6px 12px; padding:8px 11px; font-size:11.5px; }
+    .global-strip .gs-item b{ font-size:13px; }
+    .global-strip .gs-note{ margin-left:0; width:100%; font-size:10.5px; }
+    .head-tools{ gap:8px; }
+    tr.gap-row .pick{ width:12px; }
     .pillset{ flex-wrap:nowrap; overflow-x:auto; gap:6px; padding-bottom:2px; scrollbar-width:none; }
     .pillset::-webkit-scrollbar{ display:none; }
     .pill{ flex:0 0 auto; min-height:34px; display:inline-flex; align-items:center; }
@@ -336,7 +452,7 @@
     table.rwd tr.cum-hit{ border-color:var(--accent-ded); box-shadow:0 0 0 1px var(--accent-ded) inset; }
 
     /* Top20 手機版：名次併進客戶名稱那一行 */
-    .rank-inline{ color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; margin-right:2px; }
+    .rank-inline{ display:inline; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; margin-right:2px; }
     table.rwd td.rank-cell{ display:none; }
     tr.cust-row{ position:relative; }
     tr.cust-row.is-open{ border-color:var(--accent-ded); background:var(--accent-ded-soft); }
@@ -356,6 +472,9 @@
     .detail-table-wrap{ background:transparent; border:none; }
     table.detail-table{ min-width:0; }
     table.rwd.detail-table tr{ background:var(--surface); }
+    table.rwd.detail-table tr.is-sel{ border-color:var(--accent-ded); box-shadow:0 0 0 1px var(--accent-ded) inset; }
+    table.rwd.detail-table tr.is-sel td{ background:transparent; }
+    table.rwd.detail-table tr.is-sel td.name{ box-shadow:none; }
 
     /* --- 通路面板 --- */
     .side-panel{ padding:12px 13px; }
@@ -404,10 +523,15 @@
     <div class="fdivider"></div>
     <div class="fgroup"><span class="flabel">類別</span><div class="pillset" id="categoryPills"></div></div>
     <div class="fdivider" id="subcatDivider"></div>
-    <div class="fgroup" id="subcatGroup"><span class="flabel" id="subcatLabel">細項</span><div class="pillset" id="subcatPills"></div></div>
+    <div class="fgroup" id="subcatGroup"><span class="flabel" id="subcatLabel">系列</span><div class="pillset" id="subcatPills"></div></div>
+    <div class="fdivider" id="leafDivider"></div>
+    <div class="fgroup" id="leafGroup"><span class="flabel" id="leafLabel">視舒坦細分</span><div class="pillset" id="leafPills"></div></div>
     <div class="fdivider"></div>
-    <div class="fgroup"><span class="flabel">單品</span><select id="skuSelect" class="fselect"></select></div>
+    <div class="fgroup fgroup-sku"><span class="flabel">品項（可複選）</span><select id="skuSelect" class="fselect"></select><div class="skuchips" id="skuChips"></div></div>
+    <div class="fdivider"></div>
+    <div class="fgroup"><label class="fcheck"><input type="checkbox" id="inclExcluded"><span>含停用品項</span></label></div>
   </div>
+  <div class="kpi-dock" id="kpiDock" hidden></div>
 </div>
 
 <main class="wrap">
@@ -429,7 +553,11 @@
   </div>
 
   <section class="block">
-    <div class="block-head"><h2>KPI 總覽 — 所選範圍</h2><span class="hint" id="scopeHint"></span></div>
+    <div class="block-head">
+      <h2>KPI 總覽 — 所選範圍</h2>
+      <div class="head-tools"><span class="hint" id="scopeHint"></span><button type="button" class="btn tiny" id="kpiToggle"></button></div>
+    </div>
+    <div class="global-strip" id="globalStrip"></div>
     <div class="kpi-grid" id="kpiGrid"></div>
   </section>
 
@@ -458,13 +586,13 @@
   </section>
 
   <section class="block">
-    <div class="block-head"><h2>品項缺口與達成率矩陣</h2><span class="hint" id="gapScopeHint"></span></div>
+    <div class="block-head">
+      <h2>品項缺口與達成率矩陣</h2>
+      <div class="head-tools"><div class="pillset" id="gapSortPills"></div><span class="hint" id="gapScopeHint"></span></div>
+    </div>
     <div class="panel table-scroll">
       <table class="rwd">
-        <thead><tr>
-          <th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>
-          <th class="num">YTD 目標</th><th class="num">缺口／超前</th><th class="num">達成率</th><th>狀態</th>
-        </tr></thead>
+        <thead><tr id="gapTableHead"></tr></thead>
         <tbody id="gapTableBody"></tbody>
       </table>
       <div id="gapShowMore"></div>
@@ -498,6 +626,18 @@
     </div>
   </section>
 
+  <section class="block" id="mergeBlock" hidden>
+    <div class="block-head">
+      <h2>客戶名稱合併檢查</h2>
+      <div class="head-tools"><span class="hint" id="mergeHint"></span>
+        <button type="button" class="btn tiny" id="mergeToggle"></button></div>
+    </div>
+    <div class="panel" id="mergePanel" hidden>
+      <p class="merge-intro" id="mergeIntro"></p>
+      <div class="merge-list" id="mergeList"></div>
+    </div>
+  </section>
+
   <footer class="note" id="footNote"></footer>
 </main>
 
@@ -524,37 +664,150 @@ var LS_KEY = 'deoh-pulse-dataset-v1';
 var P2_NAMES = ['TEARS NATURALE II 15ML/20ML','TEARS NATURALE FREE 32S','DURATEARS OINTMENT 3.5GM'];
 var GE_NHI_NAMES = ['AZARGA 5ML-TPE','AZOPT 1% 5ML-TPE','IZBA 0.003% 2.5ML-TPE','DUOTRAV BAK-FREE 2.5ML-TPE','SIMBRINZA LDMO 10/2MG/ML LDPE 5ML (X) TW'];
 var GE_SELFPAY_NAMES = ['VIGAMOX 0.5% 5ML - TPE','NEVANAC 0.1% 5ML - TPE','PATANOL 0.1% 5ML-TPE'];
-var GROUP_LABEL = { P1:'P1 視舒坦系列', P2:'P2 淚膜系列', NHI:'健保 NHI', SELFPAY:'自費 Self-Pay', OTHER:'其他品項' };
+/* 品項分兩層看：
+   ── 大分類（系列）── 視舒坦 Systane ／ 淚然 Tears Naturale ／ 淚膜 Duratears
+   ── 視舒坦底下再細分 ── 玻尿酸 HA ／ Ultra ／ Complete
+   GE 沿用健保／自費／其他，沒有第二層。                                        */
+var FAMILY_LABEL = {
+  SYSTANE:'視舒坦 Systane', TEARS:'淚然 Tears Naturale', DURATEARS:'淚膜 Duratears',
+  NHI:'健保 NHI', SELFPAY:'自費 Self-Pay', OTHER:'其他品項'
+};
+var GROUP_LABEL = {
+  HA:'玻尿酸 HA', ULTRA:'Ultra', COMPLETE:'Complete', SYSOTHER:'其他視舒坦',
+  TEARS:'淚然 Tears Naturale', DURATEARS:'淚膜 Duratears',
+  NHI:'健保 NHI', SELFPAY:'自費 Self-Pay', OTHER:'其他品項'
+};
+// 每個細項屬於哪個大分類
+var GROUP_FAMILY = {
+  HA:'SYSTANE', ULTRA:'SYSTANE', COMPLETE:'SYSTANE', SYSOTHER:'SYSTANE',
+  TEARS:'TEARS', DURATEARS:'DURATEARS', NHI:'NHI', SELFPAY:'SELFPAY', OTHER:'OTHER'
+};
+// 視舒坦底下的第二層（依你看盤的順序）
+var SYSTANE_LEAFS = ['HA','ULTRA','COMPLETE','SYSOTHER'];
 
 function normName(s){ return String(s||'').toUpperCase().replace(/[‐-―]/g,'-').replace(/\s+/g,' ').trim(); }
 var P2_SET = P2_NAMES.map(normName), NHI_SET = GE_NHI_NAMES.map(normName), SELF_SET = GE_SELFPAY_NAMES.map(normName);
+
+/* -------------------- 品項顯示順序 + 停用品項 --------------------
+   順序照你看盤的習慣排（HA → Ultra → Complete → 淚然／淚膜；GE 依 IZBA…Patanol），
+   不在清單裡的新品項會排在最後面。EXCLUDED_NAMES 預設「不列入計算」，
+   實績與目標都不會被加總，也不會出現在任何表；篩選列的「含停用品項」可以打開來核對。 */
+var PRODUCT_ORDER = [
+  'SYSTANE HA MDPF 10ML',             // HA MDPF
+  'SYSTANE HA UNITDOSE 30CT',         // HA 30
+  'SYSTANE HA MULTIDOSE 10ML',        // HA 10ml
+  'SYSTANE ULTRA MDPF 10ML',          // Ultra MDPF
+  'SYSTANE ULTRA UNIT DOSE 30 CT',    // 你寫「Ultra 32」，資料裡的 Ultra 單支裝只有 30CT 與 24/25CT，取 30CT
+  'SYSTANE ULTRA UNIT DOSE 24/25 CT', // Ultra 24
+  'SYSTANE ULTRA 10ML',               // Ultra 10ml
+  'SYSTANE COMPLETE 10ML',            // Systane Complete（兩個規格，10ML 在前）
+  'SYSTANE COMPLETE 5ML',
+  'TEARS NATURALE FREE 32S',          // 淚然 32
+  'TEARS NATURALE II 15ML/20ML',      // 淚然 15
+  'DURATEARS OINTMENT 3.5GM',         // 淚膜
+  'IZBA 0.003% 2.5ML-TPE',
+  'DUOTRAV BAK-FREE 2.5ML-TPE',
+  'AZOPT 1% 5ML-TPE',
+  'AZARGA 5ML-TPE',
+  'SIMBRINZA LDMO 10/2MG/ML LDPE 5ML (X) TW',
+  'VIGAMOX 0.5% 5ML - TPE',
+  'NEVANAC 0.1% 5ML - TPE',
+  'PATANOL 0.1% 5ML-TPE'
+];
+var EXCLUDED_NAMES = ['SYSTANE BALANCE 10ML','SYSTANE HA UNIT DOSE 5CT','TRAVATAN BAK-FREE 2.5ML-TPE'];
+var ORDER_MAP = {}; PRODUCT_ORDER.forEach(function(nm, i){ ORDER_MAP[normName(nm)] = i; });
+var EXCLUDED_SET = {}; EXCLUDED_NAMES.forEach(function(nm){ EXCLUDED_SET[normName(nm)] = 1; });
+function productOrder(name){ var o = ORDER_MAP[normName(name)]; return o == null ? 900 : o; }
+function isExcludedProduct(name){ return !!EXCLUDED_SET[normName(name)]; }
 function groupOf(name, category){
   var n = normName(name);
-  if (category === 'DED') return P2_SET.indexOf(n) >= 0 ? 'P2' : 'P1';
+  if (category === 'DED'){
+    // DURATEARS 裡面也有 TEARS，所以一定要先判淚膜再判淚然
+    if (/DURATEAR/.test(n)) return 'DURATEARS';
+    if (/TEARS\s*NATURALE/.test(n) || P2_SET.indexOf(n) >= 0) return 'TEARS';
+    if (/\bHA\b/.test(n)) return 'HA';
+    if (/ULTRA/.test(n)) return 'ULTRA';
+    if (/COMPLETE/.test(n)) return 'COMPLETE';
+    return 'SYSOTHER';        // 其他視舒坦（例如 Balance）
+  }
   if (NHI_SET.indexOf(n) >= 0) return 'NHI';
   if (SELF_SET.indexOf(n) >= 0) return 'SELFPAY';
   return 'OTHER';
 }
+function familyOf(name, category){ return GROUP_FAMILY[groupOf(name, category)] || 'OTHER'; }
 
 /* -------------------- 同院所不同送貨點合併（對應 Excel 版「使用說明 4e」） --------------------
-   同一個實體院所因為部門／藥庫拆成好幾個客戶名稱時，報表層合併成一個客戶一起看；
-   不同分院／院區（員山、蘇澳、關渡…）維持分開，因為那是真的不同地點。
-   這裡用「通則」而不是寫死的客戶名單，所以同事的資料一樣適用，程式碼裡也不會出現任何客戶名稱：
-     ① 去掉「…醫療／學校財團法人」這類法人前綴
-     ② 去掉結尾的送貨點字樣（藥庫、藥品庫、手術室、開刀房、資材室、眼科部…）
-   實測可完整重現 Excel 版的合併結果（臺北榮總、振興、輔大附醫、三重、蘭陽院區），
-   且不會誤併員山分院／蘇澳分院／關渡醫院這些真正不同的地點。                              */
-var DEPT_SUFFIX_RE = /(藥品庫|藥庫|藥劑科|藥劑部|手術室|開刀房|資材室|眼科行政作業區|眼科部|門診藥局)\s*(\(醫材\)|（醫材）)?\s*$/;
-function customerGroupName(raw){
+   同一個實體院所被拆成「藥庫 / 手術室 / 眼科部…」好幾個客戶名稱時，報表層合併成一家一起看；
+   不同分院／院區（蘇澳分院、蘭陽院區…）維持分開，因為那是真的不同地點。
+
+   重點是「不能只認得我這一區的用詞」。同事的院所、部門叫法一定跟我不一樣，
+   所以分兩層，而且第二層完全由「這份檔案自己的客戶名單」決定：
+
+   ① 通用部門字樣：不可能單獨當成一家院所名的字（藥庫、手術室、資材室…）直接去掉；
+      像「眼科、門診」這種可能是人家診所本名的字，一定要前面有分隔符（－ - （）才去掉，
+      才不會把「牛津眼科」誤砍成「牛津」。
+   ② 資料驅動比對：某個名稱剛好等於「另一個真的存在於本檔的客戶名 ＋ 分隔符 ＋ 一小段字」
+      時才合併。母體必須真的在檔案裡出現過，所以完全不需要事先知道任何人的客戶名單，
+      沒見過的部門用詞（供應室、特材組、批價…）一樣併得起來。
+      同時擋掉兩種不該併的尾巴：分院／院區（不同地點），以及本身就是一家機構的名字
+      （含診所、醫院、藥局、光學…），避免把「某某光學－某某診所」併進母公司。
+   合併結果會列在頁尾的「客戶名稱合併檢查」，任何人都能自己核對、發現錯了可以告訴我。   */
+
+// ①-a 不可能是院所本名的部門字樣 → 直接去尾
+var DEPT_HARD_RE = /(藥品庫|藥庫|藥劑科|藥劑部|供應室|資材室|材料室|器材室|手術室|開刀房|行政作業區|門診藥局|住院藥局|中藥局|採購組|總務室|特材組|醫材組|批價櫃檯)\s*(\(醫材\)|（醫材）)?\s*$/;
+// ①-b 可能是人家診所本名的字 → 前面要有分隔符才去尾
+var DEPT_SOFT_RE = /[－\-—–(（]\s*(眼科部|眼科|門診|外科|內科|藥局)\s*[)）]?\s*$/;
+// 真的是不同地點，永遠不併
+var SITE_RE = /(分院|院區|分部|分館|分店|門診部|總院|院外)/;
+// 尾巴一定是另一家機構 → 不是送貨點，不併
+var ORG_TAIL_RE = /(診所|醫院|醫學中心|診療所|健檢中心)/;
+// 尾巴是「藥局／眼鏡行」這種：母體是醫院時代表院內藥局（要併），
+// 母體是光學公司／連鎖時代表另一家店（不併）。
+var SHOP_TAIL_RE = /(藥局|藥房|光學|眼鏡)/;
+var MED_HEAD_RE = /(醫院|醫學中心|分院|院區|療養院|衛生所)/;
+var SEP_CHARS = '－-—–(（／/';
+
+/** 第 ① 步：去掉法人前綴與部門字樣，得到「基底名稱」 */
+function baseName(raw){
   var n = String(raw == null ? '' : raw).replace(/[\s　]+/g, ' ').trim();
   var legal = n.indexOf('財團法人');
   if (legal >= 0) n = n.slice(legal + 4).trim();
   var prev = null;
   while (prev !== n){
     prev = n;
-    n = n.replace(DEPT_SUFFIX_RE, '').trim().replace(/[－\-—–]\s*$/, '').trim();
+    n = n.replace(DEPT_HARD_RE, '').trim();
+    n = n.replace(DEPT_SOFT_RE, '').trim();
+    n = n.replace(/[－\-—–]\s*$/, '').trim();
   }
   return n || String(raw || '').trim();
+}
+
+/** 第 ② 步：拿整份檔案的客戶名單互相比對，決定誰該併進誰。
+    回傳 {名稱: 要併進去的名稱}；沒有母體可併的就對應到自己。 */
+function consolidateNames(names){
+  var exists = {};
+  names.forEach(function(x){ exists[x] = 1; });
+  var direct = {};
+  names.forEach(function(x){
+    var hit = null;
+    for (var i = x.length - 2; i > 0; i--){          // 從最後一個分隔符往前找，先取最細的切法
+      if (SEP_CHARS.indexOf(x.charAt(i)) < 0) continue;
+      var head = x.slice(0, i).trim().replace(/[－\-—–]\s*$/, '').trim();
+      var tail = x.slice(i + 1).trim().replace(/[)）]\s*$/, '').trim();
+      if (!head || !tail || tail.length > 8) continue;
+      if (SITE_RE.test(tail) || ORG_TAIL_RE.test(tail)) continue;
+      if (SHOP_TAIL_RE.test(tail) && !MED_HEAD_RE.test(head)) continue;
+      if (head !== x && exists[head]){ hit = head; break; }
+    }
+    direct[x] = hit || x;
+  });
+  var map = {};
+  names.forEach(function(x){                          // A→B→C 一路併到底，並防迴圈
+    var seen = {}, cur = x;
+    while (direct[cur] && direct[cur] !== cur && !seen[cur]){ seen[cur] = 1; cur = direct[cur]; }
+    map[x] = cur;
+  });
+  return map;
 }
 
 /* -------------------- 通路分類（沿用 Excel 版的對應表） -------------------- */
@@ -567,14 +820,55 @@ var CHANNELS = [
 ];
 var CHANNEL_LABEL = {}; CHANNELS.forEach(function(c){ CHANNEL_LABEL[c.id] = c.label; });
 var CHANNEL_SHORT = { Hospital:'醫院', Clinic:'診所', Independent:'獨立藥局', Chain:'連鎖藥局', Other:'未分類' };
+// DED資料的「Customer classification」是文字標籤，分得最細也最準：
+//   Medical Facility＝醫院、Diagnostic Facility＝診所、Retail＝門前藥局(併入診所)、
+//   Pharmacy Independent＝獨立藥局、Pharmacy Retail＝其他連鎖藥局。
+var DED_CHANNEL = {
+  'Medical Facility':'Hospital',
+  'Diagnostic Facility':'Clinic',
+  'Retail':'Clinic',                 // 門前藥局，依你先前的定義併入診所
+  'Pharmacy Independent':'Independent',
+  'Pharmacy Retail':'Chain'
+};
+// GE資料只有 HP/GP/P1/DS/T1 這種粗代碼，沒有獨立/連鎖之分
+var GE_CHANNEL = { HP:'Hospital', GP:'Clinic', P1:'Clinic', DS:'Independent', T1:'Independent' };
+// 名稱明顯是院所時，用來校正 GE 代碼（例如「大學光學－信林診所」在 GE 檔被編成 DS）
+// 全國性連鎖藥局／藥妝的公開品牌字樣（不是客戶名單）：GE 檔只給 DS/T1，
+// 分不出獨立與連鎖，靠這個把連鎖門市挑出來（例：「維康－某院外店」原本會被算成獨立藥局）。
+var CHAIN_BRAND_RE = /維康|杏一|大樹|佑全|丁丁|啄木鳥|躍獅|健康人生|屈臣氏|康是美|寶雅/;
+function channelFromName(name){
+  var n = String(name || '');
+  if (/醫院|醫學中心|療養院|衛生所/.test(n)) return 'Hospital';
+  if (/診所|眼科|門診|診療/.test(n)) return 'Clinic';
+  if (CHAIN_BRAND_RE.test(n)) return 'Chain';
+  return null;
+}
 function channelOf(raw){
   var v = String(raw||'').trim();
-  if (v === 'Medical Facility' || v === 'HP') return 'Hospital';
-  if (v === 'Diagnostic Facility' || v === 'Retail' || v === 'GP' || v === 'P1') return 'Clinic';
-  if (v === 'Pharmacy Independent' || v === 'DS' || v === 'T1') return 'Independent';
-  if (v === 'Pharmacy Retail') return 'Chain';
+  if (DED_CHANNEL[v]) return DED_CHANNEL[v];
+  if (GE_CHANNEL[v]) return GE_CHANNEL[v];
   if (CHANNEL_LABEL[v]) return v;   // 已經是內部代碼（示範資料）
   return 'Other';
+}
+/** 一個客戶可能同時出現在 DED 與 GE，兩邊標籤不一致時的判定順序：
+    ① DED 的文字標籤（最準）→ ② GE 代碼，但名稱明顯是診所/醫院時以名稱為準 → ③ 其他。
+    回傳 {id, raw}，raw 是判定依據，會顯示在客戶表的 tooltip 供核對。 */
+function resolveChannel(labels, name){
+  var dedHit = null, geHit = null;
+  labels.forEach(function(v){
+    v = String(v || '').trim();
+    if (!dedHit && DED_CHANNEL[v]) dedHit = v;
+    if (!geHit && GE_CHANNEL[v]) geHit = v;
+  });
+  if (dedHit) return { id: DED_CHANNEL[dedHit], raw: dedHit + '（DED 分類）' };
+  if (geHit){
+    var byName = channelFromName(name);
+    if (byName && byName !== GE_CHANNEL[geHit]) return { id: byName, raw: geHit + '（GE 代碼，但名稱判定為' + CHANNEL_SHORT[byName] + '）' };
+    return { id: GE_CHANNEL[geHit], raw: geHit + '（GE 代碼）' };
+  }
+  var only = labels.length ? String(labels[0]).trim() : '';
+  if (CHANNEL_LABEL[only]) return { id: only, raw: '示範資料' };
+  return { id:'Other', raw: only || '未分類' };
 }
 
 /* ==========================================================================
@@ -867,7 +1161,8 @@ function monthKeyFrom(row, idx){
 }
 
 function makeCollector(){
-  var prodIdx = {}, custIdx = {}, products = [], customers = [], agg = {}, targets = [], byNorm = {}, yearsSeen = {};
+  var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
+      agg = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
   return {
     products: products, customers: customers, targets: targets,
     /** 依「正規化後的品項名稱」找既有品項（處理全形/半形破折號、大小寫、空白差異） */
@@ -882,9 +1177,46 @@ function makeCollector(){
       return prodIdx[key];
     },
     ci: function(name, rawChan){
-      var key = customerGroupName(name);   // 同院所不同送貨點在這裡合併成一個客戶
-      if (custIdx[key] == null){ custIdx[key] = customers.length; customers.push([key, channelOf(rawChan)]); }
-      return custIdx[key];
+      var key = baseName(name);            // 先只做第 ① 步，第 ② 步要等整份名單齊了才能比對
+      if (custIdx[key] == null){
+        custIdx[key] = customers.length;
+        customers.push([key, 'Other', '', []]); custLabels.push([]); custRaw.push([]);
+      }
+      var i = custIdx[key];
+      var v = String(rawChan == null ? '' : rawChan).trim();
+      if (v && custLabels[i].indexOf(v) < 0) custLabels[i].push(v);   // 兩個檔案的標籤都留著，最後一起判
+      var orig = String(name == null ? '' : name).replace(/[\s　]+/g, ' ').trim();
+      if (orig && custRaw[i].indexOf(orig) < 0) custRaw[i].push(orig);
+      return i;
+    },
+    /** 第 ② 步：整份客戶名單互相比對後真正合併，並記下每一家是由哪些原始名稱組成的 */
+    consolidate: function(){
+      var names = customers.map(function(c){ return c[0]; });
+      var map = consolidateNames(names);
+      var newIdx = {}, merged = [], mLabels = [], mRaw = [];
+      remap = customers.map(function(c, i){
+        var target = map[c[0]] || c[0];
+        if (newIdx[target] == null){
+          newIdx[target] = merged.length;
+          merged.push([target, 'Other', '', []]); mLabels.push([]); mRaw.push([]);
+        }
+        var j = newIdx[target];
+        custLabels[i].forEach(function(v){ if (mLabels[j].indexOf(v) < 0) mLabels[j].push(v); });
+        custRaw[i].forEach(function(v){ if (mRaw[j].indexOf(v) < 0) mRaw[j].push(v); });
+        return j;
+      });
+      customers.length = 0;
+      merged.forEach(function(c, j){
+        c[3] = mRaw[j].slice().sort();
+        customers.push(c);
+      });
+      custLabels.length = 0; mLabels.forEach(function(l){ custLabels.push(l); });
+    },
+    resolveChannels: function(){
+      customers.forEach(function(c, i){
+        var r = resolveChannel(custLabels[i], c[0]);
+        c[1] = r.id; c[2] = r.raw;
+      });
     },
     add: function(ci, pi, y, m, amt){
       var k = ci + '|' + pi + '|' + y + '|' + m;
@@ -893,9 +1225,16 @@ function makeCollector(){
     },
     peekYears: function(){ return Object.keys(yearsSeen).map(Number); },
     finish: function(){
-      var facts = [];
+      var sum = {};
       Object.keys(agg).forEach(function(k){
-        var v = Math.round(agg[k]);
+        var p = k.split('|');
+        var ci = remap ? remap[+p[0]] : +p[0];      // 合併後客戶索引會變，這裡一起改寫
+        var kk = ci + '|' + p[1] + '|' + p[2] + '|' + p[3];
+        sum[kk] = (sum[kk] || 0) + agg[k];
+      });
+      var facts = [];
+      Object.keys(sum).forEach(function(k){
+        var v = Math.round(sum[k]);
         if (!v) return;
         var p = k.split('|');
         facts.push([ +p[0], +p[1], +p[2], +p[3], v ]);
@@ -1104,6 +1443,8 @@ async function buildDatasetFromFiles(files, onProgress){
   });
   if (!totalUsed && !targetCount) throw new Error('沒有讀到任何可用的資料列');
 
+  col.consolidate();
+  col.resolveChannels();
   return {
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
     products: col.products, customers: col.customers, facts: col.finish(), targets: col.targets
@@ -1125,9 +1466,15 @@ function buildIndex(ds){
   var priorYear = curYear - 1;
 
   var products = ds.products.map(function(p, i){
-    return { i:i, name:p[0], category:p[1], group: groupOf(p[0], p[1]), groupLabel: GROUP_LABEL[groupOf(p[0], p[1])] };
+    var g = groupOf(p[0], p[1]);
+    return { i:i, name:p[0], category:p[1], group:g, groupLabel: GROUP_LABEL[g],
+             family: GROUP_FAMILY[g] || 'OTHER', familyLabel: FAMILY_LABEL[GROUP_FAMILY[g] || 'OTHER'],
+             ord: productOrder(p[0]), excluded: isExcludedProduct(p[0]) };
   });
-  var customers = ds.customers.map(function(c, i){ return { i:i, name:c[0], channel: channelOf(c[1]) }; });
+  var customers = ds.customers.map(function(c, i){
+    return { i:i, name:c[0], channel: channelOf(c[1]), rawChannel: c[2] || c[1] || '',
+             rawNames: (c[3] && c[3].length) ? c[3] : [c[0]] };
+  });
 
   var zeros = function(){ return [0,0,0,0,0,0,0,0,0,0,0,0]; };
   var prodMonthly = products.map(function(){ return { cur:zeros(), prior:zeros() }; });
@@ -1199,10 +1546,15 @@ function customerRows(pids, setMonth, limit){
   });
   var rows = [];
   Object.keys(cur).concat(Object.keys(prior)).forEach(function(k){ if (!rows.some(function(r){ return r.ci === +k; })) rows.push({ ci:+k }); });
+  if (state.channel) rows = rows.filter(function(r){
+    var c = IDX.customers[r.ci];
+    return c && c.channel === state.channel;
+  });
   rows.forEach(function(r){
     var c = IDX.customers[r.ci];
     r.name = c ? c.name : '(未知客戶)';
     r.channel = c ? c.channel : 'Other';
+    r.rawChannel = c ? c.rawChannel : '';
     r.y2 = cur[r.ci] || 0;
     r.y1 = prior[r.ci] || 0;
     r.growth = r.y1 ? r.y2 / r.y1 - 1 : null;
@@ -1280,13 +1632,36 @@ function channelBreakdown(pids, setMonth){
   return list.sort(function(a,b){ return b.y2 - a.y2; });
 }
 
-function gapRows(pids, setMonth){
-  var total = 0;
-  var rows = pids.map(function(pi){
-    var p = IDX.products[pi], s = periodStats([pi], 1, setMonth);
-    total += s.actual;
-    return { pi:pi, name:p.name, category:p.category, actual:s.actual, target:s.target, gap:s.gap, achievement:s.achievement };
-  });
+function gapRows(pids, setMonth, channel){
+  var total = 0, rows;
+  if (!channel){
+    rows = pids.map(function(pi){
+      var p = IDX.products[pi], st = periodStats([pi], 1, setMonth);
+      total += st.actual;
+      return { pi:pi, name:p.name, category:p.category, ord:p.ord, excluded:p.excluded,
+               actual:st.actual, prior:st.prior,
+               target:st.target, gap:st.gap, achievement:st.achievement, yoy:st.yoy };
+    });
+  } else {
+    // 指定通路時，只能從「客戶 × 品項」的明細往回加總；
+    // 目標檔只有品項層級、沒有分通路，所以這個模式不算達成率（見 renderGapTable 的說明）。
+    var pset = {}; pids.forEach(function(x){ pset[x] = 1; });
+    var cur = {}, pri = {};
+    DATA.facts.forEach(function(f){
+      if (!pset[f[1]] || f[3] > setMonth) return;
+      var c = IDX.customers[f[0]];
+      if (!c || c.channel !== channel) return;
+      if (f[2] === IDX.curYear) cur[f[1]] = (cur[f[1]] || 0) + f[4];
+      else if (f[2] === IDX.priorYear) pri[f[1]] = (pri[f[1]] || 0) + f[4];
+    });
+    rows = pids.map(function(pi){
+      var p = IDX.products[pi], a = cur[pi] || 0, b = pri[pi] || 0;
+      total += a;
+      return { pi:pi, name:p.name, category:p.category, ord:p.ord, excluded:p.excluded,
+               actual:a, prior:b,
+               target:null, gap:null, achievement:null, yoy: b ? a / b - 1 : null };
+    }).filter(function(r){ return r.actual || r.prior; });
+  }
   rows.forEach(function(r){ r.share = total ? r.actual / total : 0; });
   return rows.sort(function(a,b){ return b.actual - a.actual; });
 }
@@ -1294,35 +1669,93 @@ function gapRows(pids, setMonth){
 /* ==========================================================================
    5. 篩選狀態
    ========================================================================== */
-var state = { setMonth:8, category:'ALL', subcats:{}, sku:'ALL', chartMode:'amount', custSort:'current', openCustomer:null, showAllGap:false, showAllCust:false };
+var state = {
+  setMonth:8, category:'ALL',
+  subcats:{},              // 大分類（系列）：SYSTANE／TEARS／DURATEARS／NHI／SELFPAY／OTHER
+  leafs:{},                // 視舒坦底下的第二層：HA／ULTRA／COMPLETE／SYSOTHER
+  skus:[],                 // 已選品項（可複選）；空陣列＝看整個類別
+  chartMode:'amount', custSort:'current', gapSort:'order', gapOnlySel:false,
+  openCustomer:null, showAllGap:false, showAllCust:false, channel:null,
+  includeExcluded:false,   // 停用品項（Balance／HA 5CT／Travatan）預設不列入計算
+  kpiCollapsed:false,
+  mobileFilters:false,     // 手機且 KPI 釘在上方時，篩選列是否展開
+  showMerge:false          // 頁尾「客戶名稱合併檢查」是否展開
+};
 
+/** 大分類（系列）選項；只列出這份資料真的有的，別人的檔案沒有的系列不會空著佔位 */
 function subcatOptions(cat){
-  if (cat === 'DED') return [{id:'P1',label:'P1 視舒坦'},{id:'P2',label:'P2 淚膜系列'}];
-  if (cat === 'GE')  return [{id:'NHI',label:'健保 NHI'},{id:'SELFPAY',label:'自費 Self-Pay'},{id:'OTHER',label:'其他'}];
-  return [];
+  var order = cat === 'DED' ? ['SYSTANE','TEARS','DURATEARS'] : ['NHI','SELFPAY','OTHER'];
+  var have = {};
+  (IDX ? productPool() : []).forEach(function(p){ if (p.category === cat) have[p.family] = 1; });
+  return order.filter(function(f){ return have[f]; })
+              .map(function(f){ return { id:f, label:FAMILY_LABEL[f] }; });
+}
+/** 視舒坦底下的第二層選項（同樣只列出真的有的） */
+function leafOptions(){
+  if (state.category !== 'DED') return [];
+  var have = {};
+  productPool().forEach(function(p){ if (p.category === 'DED' && p.family === 'SYSTANE') have[p.group] = 1; });
+  return SYSTANE_LEAFS.filter(function(g){ return have[g]; })
+                      .map(function(g){ return { id:g, label:GROUP_LABEL[g] }; });
 }
 function activeSubcats(){ return Object.keys(state.subcats).filter(function(k){ return state.subcats[k]; }); }
+function activeLeafs(){ return Object.keys(state.leafs).filter(function(k){ return state.leafs[k]; }); }
+/** 目前「列入計算」的品項池：停用品項預設整個排除（實績與目標都不算） */
+function productPool(){
+  return IDX.products.filter(function(p){ return state.includeExcluded || !p.excluded; });
+}
+function byOrder(a, b){ return (a.ord - b.ord) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); }
+function allProductIds(){ return productPool().map(function(p){ return p.i; }); }
 function categoryProducts(){
   var subs = activeSubcats();
-  return IDX.products.filter(function(p){
+  var leafs = activeLeafs();
+  return productPool().filter(function(p){
     if (state.category !== 'ALL' && p.category !== state.category) return false;
-    if (subs.length && subs.indexOf(p.group) < 0) return false;
+    if (subs.length && subs.indexOf(p.family) < 0) return false;
+    // 第二層只作用在視舒坦系列上；選了細分就只看那幾個，其他系列不受影響
+    if (leafs.length && p.family === 'SYSTANE' && leafs.indexOf(p.group) < 0) return false;
     return true;
-  });
+  }).sort(byOrder);
+}
+/** 已選品項（依顯示順序） */
+function selectedProducts(){
+  return state.skus.map(function(i){ return IDX.products[i]; })
+    .filter(function(p){ return p && (state.includeExcluded || !p.excluded); })
+    .sort(byOrder);
 }
 function scopeIds(){
-  if (state.sku !== 'ALL'){ var i = +state.sku; return IDX.products[i] ? [i] : []; }
+  var sel = selectedProducts();
+  if (sel.length) return sel.map(function(p){ return p.i; });
   return categoryProducts().map(function(p){ return p.i; });
 }
 function scopeLabel(){
-  if (state.sku !== 'ALL' && IDX.products[+state.sku]) return IDX.products[+state.sku].name;
+  var sel = selectedProducts();
+  if (sel.length === 1) return sel[0].name;
+  if (sel.length > 1) return '比較 ' + sel.length + ' 個品項：' + sel.map(function(p){ return p.name; }).join('、');
   var n = categoryProducts().length;
   if (state.category === 'ALL') return '全部產品 Total（' + n + ' 項）';
   var base = state.category === 'DED' ? '人工淚液 DED' : '青光眼 GE';
-  var subs = activeSubcats();
-  return base + (subs.length ? '｜' + subs.map(function(s){ return GROUP_LABEL[s]; }).join('、') : '') + '（' + n + ' 項）';
+  return base + filterSuffix() + '（' + n + ' 項）';
 }
-function accentVar(){ return state.category === 'GE' ? 'var(--accent-ge)' : 'var(--accent-ded)'; }
+/** 「｜視舒坦 Systane｜玻尿酸 HA、Ultra」這種兩層的說明字串 */
+function filterSuffix(){
+  var subs = activeSubcats(), leafs = activeLeafs(), out = '';
+  if (subs.length) out += '｜' + subs.map(function(f){ return FAMILY_LABEL[f]; }).join('、');
+  if (leafs.length) out += '｜' + leafs.map(function(g){ return GROUP_LABEL[g]; }).join('、');
+  return out;
+}
+function accentVar(){
+  var sel = selectedProducts();
+  if (sel.length && sel.every(function(p){ return p.category === 'GE'; })) return 'var(--accent-ge)';
+  if (sel.length) return 'var(--accent-ded)';
+  return state.category === 'GE' ? 'var(--accent-ge)' : 'var(--accent-ded)';
+}
+function toggleSku(pi){
+  var k = state.skus.indexOf(pi);
+  if (k >= 0) state.skus.splice(k, 1); else state.skus.push(pi);
+  state.openCustomer = null;
+  render();
+}
 
 /* ==========================================================================
    6. 格式化
@@ -1513,6 +1946,81 @@ function renderChart(holder, series, setMonth, accent, mode){
   svgEl.addEventListener('touchend', hide);
 }
 
+/* 品項對比圖：複選兩個以上品項時，每項今年一條線畫在同一張圖上，
+   看得出誰在拉抬、誰在拖累，以及兩個品項是不是同進同退（例如 MDPF 換裝吃掉舊規格）。
+   縱軸一律共用，所以線的高低就是實際金額差距。 */
+var COMPARE_COLORS = ['#0E7C86','#C2557A','#6A55AD','#B4762A','#3B7A57','#2F6BB5'];
+
+function renderCompareChart(holder, series, setMonth){
+  var narrow = isNarrow();
+  var W = narrow ? 380 : 660, H = narrow ? 230 : 268;
+  var PL = narrow ? 46 : 62, PR = narrow ? 10 : 16, PT = narrow ? 14 : 16, PB = narrow ? 24 : 30;
+  var FS = narrow ? 12 : 10;
+  var iw = W - PL - PR, ih = H - PT - PB;
+
+  var vals = [];
+  series.forEach(function(x){ x.cur.forEach(function(v){ if (v != null) vals.push(v); }); });
+  if (!vals.length) vals.push(1);
+  var sc = niceScale(Math.min.apply(null, vals), Math.max.apply(null, vals));
+  var top = sc.hi, bottom = sc.lo;
+  var X = function(i){ return PL + iw * (i / 11); };
+  var Y = function(v){ return PT + ih * (1 - (v - bottom) / (top - bottom || 1)); };
+  function path(arr){
+    var d = '', pen = false;
+    arr.forEach(function(v, i){
+      if (v == null){ pen = false; return; }
+      d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      pen = true;
+    });
+    return d.trim();
+  }
+  var ticks = [0, 0.25, 0.5, 0.75, 1].map(function(f){ return bottom + (top - bottom) * f; });
+  var grid = ticks.map(function(t){
+    return '<line x1="' + PL + '" y1="' + Y(t).toFixed(1) + '" x2="' + (W-PR) + '" y2="' + Y(t).toFixed(1) + '" stroke="var(--border)" stroke-width="1"/>' +
+           '<text x="' + (PL-6) + '" y="' + (Y(t)+3.5).toFixed(1) + '" text-anchor="end" font-size="' + FS + '" font-family="IBM Plex Mono, monospace" fill="var(--ink-faint)">' + compact(t) + '</text>';
+  }).join('');
+  var xlabels = [];
+  for (var m = 1; m <= 12; m++){
+    if (narrow && m % 2 === 0 && m !== setMonth) continue;
+    xlabels.push('<text x="' + X(m-1).toFixed(1) + '" y="' + (H-7) + '" text-anchor="middle" font-size="' + FS + '" fill="' + (m === setMonth ? 'var(--ink)' : 'var(--ink-faint)') + '" font-weight="' + (m === setMonth ? '600' : '400') + '">' + m + '</text>');
+  }
+  var setLine = '<line x1="' + X(setMonth-1).toFixed(1) + '" y1="' + PT + '" x2="' + X(setMonth-1).toFixed(1) + '" y2="' + (PT+ih) + '" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="2 3"/>';
+  var zeroNote = !sc.zeroBased ? '<text x="' + (W-PR) + '" y="' + (PT-4) + '" text-anchor="end" font-size="' + (FS-1) + '" fill="var(--ink-faint)">縱軸非從 0 起</text>' : '';
+  var lines = series.map(function(x){
+    return '<path d="' + path(x.cur) + '" fill="none" stroke="' + x.color + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
+  }).join('');
+
+  holder.innerHTML =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="品項對比折線圖">' +
+      grid + setLine + zeroNote + lines +
+      '<line class="hover-line" x1="0" y1="' + PT + '" x2="0" y2="' + (PT+ih) + '" stroke="var(--ink-faint)" stroke-width="1" opacity="0"/>' +
+      xlabels.join('') +
+    '</svg><div class="chart-tip"></div>';
+
+  var svgEl = holder.querySelector('svg'), tip = holder.querySelector('.chart-tip'), hoverLine = holder.querySelector('.hover-line');
+  function show(evt){
+    var rect = svgEl.getBoundingClientRect();
+    var px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+    var ratio = rect.width / W;
+    var i = Math.max(0, Math.min(11, Math.round((px / ratio - PL) / (iw / 11))));
+    hoverLine.setAttribute('x1', X(i)); hoverLine.setAttribute('x2', X(i)); hoverLine.setAttribute('opacity', '0.5');
+    tip.innerHTML = '<div class="tip-title">' + (i+1) + ' 月</div>' + series.map(function(x){
+      return '<div class="tip-row"><span><i class="legend-swatch" style="background:' + x.color + '"></i>' + esc(x.name) + '</span><b>' +
+        (x.cur[i] == null ? '尚無資料' : full(x.cur[i])) + '</b></div>';
+    }).join('');
+    tip.style.opacity = '1';
+    var tipW = tip.offsetWidth || 170;
+    var left = Math.min(Math.max(X(i) * ratio - tipW/2, 4), rect.width - tipW - 4);
+    tip.style.left = left + 'px';
+    tip.style.top = '6px';
+  }
+  function hide(){ tip.style.opacity = '0'; hoverLine.setAttribute('opacity', '0'); }
+  svgEl.addEventListener('mousemove', show);
+  svgEl.addEventListener('mouseleave', hide);
+  svgEl.addEventListener('touchstart', show, { passive:true });
+  svgEl.addEventListener('touchmove', show, { passive:true });
+}
+
 function legendHtml(accent, mode){
   if (mode === 'rate'){
     return '<span class="legend-item"><i class="legend-swatch" style="background:' + accent + '"></i>每月達成率</span>' +
@@ -1548,7 +2056,8 @@ function renderCategoryPills(){
     b.className = 'pill' + (pair[0] === 'GE' ? ' ge' : '');
     b.textContent = pair[1];
     b.setAttribute('aria-pressed', String(state.category === pair[0]));
-    b.onclick = function(){ state.category = pair[0]; state.subcats = {}; state.sku = 'ALL'; render(); };
+    b.onclick = function(){ state.category = pair[0]; state.subcats = {}; state.leafs = {};
+                            state.skus = []; state.openCustomer = null; render(); };
     el.appendChild(b);
   });
 }
@@ -1556,44 +2065,105 @@ function renderCategoryPills(){
 function renderSubcatPills(){
   var opts = subcatOptions(state.category);
   var group = document.getElementById('subcatGroup'), div = document.getElementById('subcatDivider');
-  if (!opts.length){ group.style.display = 'none'; div.style.display = 'none'; return; }
+  if (!opts.length){ group.style.display = 'none'; div.style.display = 'none'; }
+  else {
+    group.style.display = ''; div.style.display = '';
+    document.getElementById('subcatLabel').textContent = (state.category === 'DED' ? 'DED' : 'GE') + ' 系列（可複選）';
+    var el = document.getElementById('subcatPills'); el.innerHTML = '';
+    opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.className = 'pill' + (state.category === 'GE' ? ' ge' : '');
+      b.textContent = o.label;
+      b.setAttribute('aria-pressed', String(!!state.subcats[o.id]));
+      b.onclick = function(){
+        state.subcats[o.id] = !state.subcats[o.id];
+        // 取消視舒坦時，底下的第二層跟著收掉，才不會留下看不見的篩選條件
+        if (o.id === 'SYSTANE' && !state.subcats[o.id]) state.leafs = {};
+        state.skus = []; state.openCustomer = null; render();
+      };
+      el.appendChild(b);
+    });
+  }
+  renderLeafPills();
+}
+
+/** 視舒坦底下的第二層：選了「視舒坦系列」才出現，避免平常佔一整排 */
+function renderLeafPills(){
+  var group = document.getElementById('leafGroup'), div = document.getElementById('leafDivider');
+  var opts = leafOptions();
+  var show = state.category === 'DED' && opts.length && (state.subcats.SYSTANE || activeLeafs().length);
+  if (!show){
+    group.style.display = 'none'; div.style.display = 'none';
+    if (!state.subcats.SYSTANE) state.leafs = {};
+    return;
+  }
   group.style.display = ''; div.style.display = '';
-  document.getElementById('subcatLabel').textContent = (state.category === 'DED' ? 'DED' : 'GE') + ' 細項（可複選）';
-  var el = document.getElementById('subcatPills'); el.innerHTML = '';
+  document.getElementById('leafLabel').textContent = '視舒坦細分（可複選）';
+  var el = document.getElementById('leafPills'); el.innerHTML = '';
   opts.forEach(function(o){
     var b = document.createElement('button');
-    b.className = 'pill' + (state.category === 'GE' ? ' ge' : '');
+    b.className = 'pill leaf';
     b.textContent = o.label;
-    b.setAttribute('aria-pressed', String(!!state.subcats[o.id]));
-    b.onclick = function(){ state.subcats[o.id] = !state.subcats[o.id]; state.sku = 'ALL'; render(); };
+    b.setAttribute('aria-pressed', String(!!state.leafs[o.id]));
+    b.onclick = function(){ state.leafs[o.id] = !state.leafs[o.id]; state.skus = []; state.openCustomer = null; render(); };
     el.appendChild(b);
   });
 }
 
-function renderSkuSelect(){
+/** 品項選單＝「加入一個品項」；已選的用晶片列出來，可以再加第二個做比較。
+    缺口表上直接點某一列也是同一組選擇（兩邊永遠同步）。 */
+function renderSkuPicker(){
   var sel = document.getElementById('skuSelect');
-  var opts = categoryProducts();
+  var chosen = {}; state.skus.forEach(function(i){ chosen[i] = 1; });
+  var opts = categoryProducts().filter(function(p){ return !chosen[p.i]; });
   sel.innerHTML = '';
-  var all = document.createElement('option'); all.value = 'ALL'; all.textContent = '全部（' + opts.length + ' 項）';
-  sel.appendChild(all);
+  var head = document.createElement('option');
+  head.value = '';
+  head.textContent = state.skus.length ? '＋ 再加一個品項比較…' : '全部（' + categoryProducts().length + ' 項）— 選一個往下鑽';
+  sel.appendChild(head);
   opts.forEach(function(p){
-    var o = document.createElement('option'); o.value = p.i; o.textContent = p.name; sel.appendChild(o);
+    var o = document.createElement('option'); o.value = p.i;
+    o.textContent = p.name + (p.excluded ? '（停用）' : ''); sel.appendChild(o);
   });
-  var stillThere = opts.some(function(p){ return String(p.i) === String(state.sku); });
-  sel.value = stillThere ? state.sku : 'ALL';
-  state.sku = sel.value;
-  sel.onchange = function(){ state.sku = sel.value; render(); };
+  sel.value = '';
+  sel.onchange = function(){ if (sel.value === '') return; toggleSku(+sel.value); };
+
+  var chips = document.getElementById('skuChips');
+  chips.innerHTML = '';
+  selectedProducts().forEach(function(p){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'skuchip' + (p.category === 'GE' ? ' ge' : '');
+    b.innerHTML = esc(p.name) + '<span class="x">✕</span>';
+    b.title = '移除「' + p.name + '」';
+    b.onclick = function(){ toggleSku(p.i); };
+    chips.appendChild(b);
+  });
+  if (state.skus.length){
+    var c = document.createElement('button');
+    c.type = 'button'; c.className = 'skuchip clear';
+    c.textContent = '清除，回到整個類別';
+    c.onclick = function(){ state.skus = []; state.openCustomer = null; render(); };
+    chips.appendChild(c);
+  }
+
+  var chk = document.getElementById('inclExcluded');
+  if (chk){
+    chk.checked = state.includeExcluded;
+    chk.title = '預設不列入計算：' + EXCLUDED_NAMES.join('、');
+    chk.onchange = function(){ state.includeExcluded = chk.checked; state.openCustomer = null; render(); };
+  }
 }
 
 /** 達成率卡：主角是「達成率 %」，金額只以小字補充缺口／超前多少 */
-function achieveCard(label, sub, s){
+function achieveCard(label, sub, s, key){
   var cls = stateFor(s.achievement);
   var badge = s.achievement == null ? '未上傳目標' : s.achievement >= 1 ? '達標' : s.achievement < 0.9 ? '落後' : '接近目標';
   var width = s.achievement == null ? 0 : Math.min(s.achievement * 100, 130);
   var gapTxt = s.gap == null ? '尚未上傳目標'
     : s.gap > 0 ? '<span class="gap-behind">缺口 ' + compact(s.gap) + '</span>'
                 : '<span class="gap-ahead">超前 ' + compact(Math.abs(s.gap)) + '</span>';
-  return '<div class="kpi-card state-' + cls + '">' +
+  return '<div class="kpi-card kpi-' + key + ' state-' + cls + '">' +
     '<div class="kpi-top"><span class="kpi-label">' + label + '</span><span class="kpi-badge ' + cls + '">' + badge + '</span></div>' +
     '<div class="kpi-value">' + pct(s.achievement, 0) + '</div>' +
     '<div class="kpi-sub">' + sub + '</div>' +
@@ -1603,11 +2173,11 @@ function achieveCard(label, sub, s){
 }
 
 /** 成長率卡：主角是「YoY 成長率 %」，小字補充去年同期基期 */
-function growthCard(label, sub, s){
+function growthCard(label, sub, s, key){
   var cls = s.yoy == null ? 'none' : s.yoy >= 0 ? 'good' : 'critical';
   var badge = s.yoy == null ? '無去年同期' : s.yoy >= 0 ? '成長' : '衰退';
   var width = s.yoy == null ? 0 : Math.min(Math.abs(s.yoy) * 100 * 2, 100);
-  return '<div class="kpi-card state-' + cls + '">' +
+  return '<div class="kpi-card kpi-' + key + ' state-' + cls + '">' +
     '<div class="kpi-top"><span class="kpi-label">' + label + '</span><span class="kpi-badge ' + cls + '">' + badge + '</span></div>' +
     '<div class="kpi-value ' + (s.yoy == null ? '' : s.yoy >= 0 ? 'pos' : 'neg') + '">' + pctSigned(s.yoy) + '</div>' +
     '<div class="kpi-sub">' + sub + '</div>' +
@@ -1617,19 +2187,103 @@ function growthCard(label, sub, s){
     '</div>';
 }
 
+/** 常駐的「全公司」列：一行，鑽到任何品項都不會消失，
+    所以 KPI 六格可以專心跟著所選範圍走，不必再多放一組全公司卡片。 */
+function renderGlobalStrip(){
+  var m = state.setMonth, allIds = allProductIds(), ids = scopeIds();
+  var g = periodStats(allIds, 1, m), gm = periodStats(allIds, m, m);
+  var scoped = ids.length !== allIds.length;
+  function num(v, cls){ return '<b' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</b>'; }
+  var aCls = g.achievement == null ? '' : g.achievement >= 1 ? 'good' : g.achievement < 0.9 ? 'critical' : '';
+  var yCls = g.yoy == null ? '' : g.yoy >= 0 ? 'good' : 'critical';
+  document.getElementById('globalStrip').innerHTML =
+    '<span class="gs-tag">全公司 · 全部品項</span>' +
+    '<span class="gs-item">YTD 達成率 ' + num(pct(g.achievement, 0), aCls) + '</span>' +
+    '<span class="gs-item">YTD 實績 ' + num(compact(g.actual)) + '<span>／目標 ' + compact(g.target) + '</span></span>' +
+    '<span class="gs-item">YoY ' + num(pctSigned(g.yoy), yCls) + '</span>' +
+    '<span class="gs-item">第 ' + m + ' 月 ' + num(pct(gm.achievement, 0)) + '</span>' +
+    '<span class="gs-note">' + (scoped ? '下方 KPI／趨勢／缺口／Top20 已鑽到：' + scopeLabel() : '下方即為全公司，可用上方篩選往下鑽') + '</span>';
+}
+
+/** 收合後釘在篩選列下方的迷你 KPI 條：六個指標跟著「目前選的範圍」走，
+    右邊再附一個全公司 YTD 當定位點。往下捲去看缺口表或 Top20 時都還在眼前。 */
+function renderKpiDock(mtd, qtd, ytd){
+  var dock = document.getElementById('kpiDock');
+  if (!dock) return;
+  var bar = document.querySelector('.filterbar');
+  dock.hidden = !state.kpiCollapsed;
+  if (bar) bar.classList.toggle('filters-hidden', state.kpiCollapsed && isNarrow() && !state.mobileFilters);
+  if (!state.kpiCollapsed){ dock.innerHTML = ''; return; }
+
+  var m = state.setMonth, q = Math.ceil(m/3);
+  function achCls(v){ return v == null ? '' : v >= 1 ? 'good' : v < 0.9 ? 'critical' : 'watch'; }
+  function yoyCls(v){ return v == null ? '' : v >= 0 ? 'good' : 'critical'; }
+  // 達成率：整顆上色 + 狀態圓點 + 大字（收合後最想一眼看到的就是這個）
+  function achChip(label, s, title){
+    var cls = stateFor(s.achievement);
+    return '<span class="dock-kpi ach ' + cls + '" title="' + esc(title) + '">' +
+           '<span class="dot"></span>' + label + ' <b>' + pct(s.achievement, 0) + '</b></span>';
+  }
+  // 成長率：低調的配角，只用箭頭與顏色
+  function grChip(label, s, title){
+    var v = s.yoy, cls = yoyCls(v);
+    var arrow = v == null ? '' : (v >= 0 ? '▲' : '▼');
+    return '<span class="dock-kpi gr" title="' + esc(title) + '">' + label +
+           ' <b' + (cls ? ' class="' + cls + '"' : '') + '>' + arrow + pctSigned(v).replace(/^\+/, '') + '</b></span>';
+  }
+  function chip(label, val, cls, title, extra){
+    return '<span class="dock-kpi' + (extra || '') + '" title="' + esc(title) + '">' + label +
+           ' <b' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</b></span>';
+  }
+  var g = periodStats(allProductIds(), 1, m);
+  var scoped = scopeIds().length !== allProductIds().length;
+  var narrow = isNarrow();
+
+  dock.innerHTML =
+    (narrow ? '<button type="button" class="btn tiny dock-filters" id="dockFilters">' +
+              (state.mobileFilters ? '收起篩選 ▴' : '篩選 ▾') + '</button>' : '') +
+    '<span class="dock-scope"><span class="dock-tag">目前範圍</span>' + esc(scopeLabel()) + '</span>' +
+    '<span class="dock-items">' +
+      achChip('MTD', mtd, '第 ' + m + ' 月達成率') +
+      grChip('MGR', mtd, '第 ' + m + ' 月 vs. 去年同月') +
+      achChip('QTD', qtd, 'Q' + q + ' 達成率') +
+      grChip('QGR', qtd, 'Q' + q + ' vs. 去年同季') +
+      achChip('YTD', ytd, '累計第 1–' + m + ' 月達成率') +
+      grChip('YGR', ytd, 'YTD vs. 去年同期') +
+      (scoped ? '<span class="dock-sep"></span>' +
+                chip('全公司 YTD', pct(g.achievement, 0), achCls(g.achievement),
+                     '全部品項的 YTD 達成率，當作定位點', ' is-global') : '') +
+    '</span>' +
+    '<button type="button" class="btn tiny" id="dockExpand">展開 KPI ▾</button>';
+
+  document.getElementById('dockExpand').onclick = function(){ state.kpiCollapsed = false; render(); };
+  var df = document.getElementById('dockFilters');
+  if (df) df.onclick = function(){ state.mobileFilters = !state.mobileFilters; render(); };
+}
+
 function renderKPIs(){
   var ids = scopeIds(), m = state.setMonth, q = Math.ceil(m/3);
   var mtd = periodStats(ids, m, m);
   var qtd = periodStats(ids, quarterStart(m), m);
   var ytd = periodStats(ids, 1, m);
-  document.getElementById('kpiGrid').innerHTML =
-    achieveCard('MTD 達成率', '第 ' + m + ' 月', mtd) +
-    achieveCard('QTD 達成率', 'Q' + q + '（第 ' + quarterStart(m) + '–' + m + ' 月）', qtd) +
-    achieveCard('YTD 達成率', '累計第 1–' + m + ' 月', ytd) +
-    growthCard('MGR 月成長率', '第 ' + m + ' 月 vs. 去年同月', mtd) +
-    growthCard('QGR 季成長率', 'Q' + q + ' vs. 去年同季', qtd) +
-    growthCard('YGR 年成長率', 'YTD vs. 去年同期', ytd);
+  var grid = document.getElementById('kpiGrid');
+  grid.hidden = state.kpiCollapsed;
+  // 順序＝達成率／成長率兩兩相鄰（MTD-MGR、QTD-QGR、YTD-YGR），任何欄數下都在同一排
+  grid.innerHTML = state.kpiCollapsed ? '' : (
+    achieveCard('MTD 達成率', '第 ' + m + ' 月', mtd, 'mtd') +
+    growthCard('MGR 月成長率', '第 ' + m + ' 月 vs. 去年同月', mtd, 'mgr') +
+    achieveCard('QTD 達成率', 'Q' + q + '（第 ' + quarterStart(m) + '–' + m + ' 月）', qtd, 'qtd') +
+    growthCard('QGR 季成長率', 'Q' + q + ' vs. 去年同季', qtd, 'qgr') +
+    achieveCard('YTD 達成率', '累計第 1–' + m + ' 月', ytd, 'ytd') +
+    growthCard('YGR 年成長率', 'YTD vs. 去年同期', ytd, 'ygr'));
+  var tg = document.getElementById('kpiToggle');
+  tg.textContent = state.kpiCollapsed ? '展開 KPI ▾' : '收合 KPI ▴（改釘在上方選單列）';
+  tg.title = state.kpiCollapsed ? '把六格 KPI 展開回這裡'
+                                : '收合後六個指標會縮成一條，跟篩選列一起釘在畫面上方，往下分析時仍看得到';
+  tg.onclick = function(){ state.kpiCollapsed = !state.kpiCollapsed; render(); };
   document.getElementById('scopeHint').textContent = scopeLabel();
+  renderGlobalStrip();
+  renderKpiDock(mtd, qtd, ytd);
 }
 
 function renderChartModePills(){
@@ -1647,9 +2301,9 @@ function renderChartModePills(){
 function renderCharts(){
   renderChartModePills();
   var mode = state.chartMode;
-  var allIds = IDX.products.map(function(p){ return p.i; });
+  var allIds = allProductIds();
   // 手機：範圍就是「全部產品」時，兩張圖內容完全一樣 → 只留一張，不浪費一個螢幕
-  var scopeIsAll = (state.category === 'ALL' && state.sku === 'ALL' && !activeSubcats().length);
+  var scopeIsAll = (state.category === 'ALL' && !state.skus.length && !activeSubcats().length && !activeLeafs().length);
   var hideDup = isNarrow() && scopeIsAll;
   var selPanel = document.getElementById('holderSelected').closest('.chart-panel');
   if (selPanel) selPanel.hidden = hideDup;
@@ -1669,36 +2323,119 @@ function renderCharts(){
   document.getElementById('legendTotal').innerHTML = legendHtml('var(--accent-ded)', mode);
 
   var ids = scopeIds(), accent = accentVar();
-  renderChart(document.getElementById('holderSelected'), trendSeries(ids, state.setMonth), state.setMonth, accent, mode);
-  document.getElementById('scopeSelected').textContent = scopeLabel();
-  document.getElementById('legendSelected').innerHTML = legendHtml(accent, mode);
+  var sel = selectedProducts();
+  var selTitle = document.getElementById('holderSelected').closest('.chart-panel').querySelector('h3');
+  if (sel.length >= 2 && mode === 'amount'){
+    // 複選兩個以上品項 → 改成「品項對比」：每個品項今年一條線，直接看走勢的關聯
+    if (selTitle) selTitle.textContent = '品項對比 Compare（' + sel.length + ' 項，今年實績）';
+    var series = sel.map(function(p, i){
+      return { name:p.name, color: COMPARE_COLORS[i % COMPARE_COLORS.length],
+               cur: IDX.prodMonthly[p.i].cur.map(function(v, mi){ return mi + 1 <= state.setMonth ? v : null; }) };
+    });
+    renderCompareChart(document.getElementById('holderSelected'), series, state.setMonth);
+    document.getElementById('legendSelected').innerHTML = series.map(function(x){
+      return '<span class="legend-item"><i class="legend-swatch" style="background:' + x.color + '"></i>' + esc(x.name) + '</span>';
+    }).join('');
+  } else {
+    if (selTitle) selTitle.textContent = '所選範圍 Selected';
+    renderChart(document.getElementById('holderSelected'), trendSeries(ids, state.setMonth), state.setMonth, accent, mode);
+    document.getElementById('legendSelected').innerHTML = legendHtml(accent, mode);
+  }
+  document.getElementById('scopeSelected').textContent = scopeLabel() +
+    (sel.length >= 2 && mode !== 'amount' ? '（達成率模式為 ' + sel.length + ' 項合計；切到「金額趨勢」可逐項對比）' : '');
+}
+
+function renderGapSortPills(){
+  var el = document.getElementById('gapSortPills'); el.innerHTML = '';
+  [['order','依品項順序'],['actual','依 YTD 實績']].forEach(function(pair){
+    var b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = pair[1];
+    b.setAttribute('aria-pressed', String(state.gapSort === pair[0]));
+    b.onclick = function(){ state.gapSort = pair[0]; render(); };
+    el.appendChild(b);
+  });
+  if (state.skus.length){
+    var t = document.createElement('button');
+    t.className = 'pill';
+    t.textContent = '只看已選 ' + state.skus.length + ' 項';
+    t.setAttribute('aria-pressed', String(state.gapOnlySel));
+    t.onclick = function(){ state.gapOnlySel = !state.gapOnlySel; render(); };
+    el.appendChild(t);
+  } else if (state.gapOnlySel){ state.gapOnlySel = false; }
 }
 
 function renderGapTable(){
+  renderGapSortPills();
+  // 這張表刻意維持「整個類別的全品項」：它就是用來看「哪一個品項出問題」的。
+  // 點任一列＝把該品項加入上方的複選，KPI／趨勢圖／Top20 全部跟著鑽下去；
+  // 真的只想看已選那幾項時，按標題旁的「只看已選」。
   var ids = categoryProducts().map(function(p){ return p.i; });
-  var rows = gapRows(ids, state.setMonth);
+  var chan = state.channel;
+  var selSet = {}; state.skus.forEach(function(i){ selSet[i] = 1; });
+  var rows = gapRows(ids, state.setMonth, chan);
+  if (state.gapOnlySel && state.skus.length) rows = rows.filter(function(r){ return selSet[r.pi]; });
+  if (state.gapSort === 'order') rows.sort(function(a, b){ return (a.ord - b.ord) || (b.actual - a.actual); });
+  // 已選的品項永遠釘在最上面，往下鑽的時候不用再去表裡找
+  if (state.skus.length && !state.gapOnlySel){
+    rows.sort(function(a, b){ return (selSet[b.pi] ? 1 : 0) - (selSet[a.pi] ? 1 : 0); });
+  }
+
+  // 有選通路時，改用「去年同期 / YoY」取代「目標 / 缺口 / 達成率」：
+  // 目標檔只有品項層級、沒有分通路，硬算達成率會是我自己攤出來的假分母。
+  document.getElementById('gapTableHead').innerHTML = chan
+    ? '<th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>' +
+      '<th class="num">去年同期</th><th class="num">YoY</th><th>狀態</th>'
+    : '<th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>' +
+      '<th class="num">YTD 目標</th><th class="num">缺口／超前</th><th class="num">達成率</th><th>狀態</th>';
+
+  var catLabel = state.category === 'ALL' ? '全部產品' : (state.category === 'DED' ? '人工淚液 DED' : '青光眼 GE');
+  catLabel += filterSuffix();
   document.getElementById('gapScopeHint').textContent =
-    (state.category === 'ALL' ? '全部產品' : scopeLabel()) + ' · 依 YTD 實績排序' + (IDX.hasTargets ? '' : '（尚未上傳目標，僅顯示實績）');
+    (chan ? CHANNEL_LABEL[chan] + '｜' : '') + catLabel + '（' + rows.length + ' 項）· 點任一列即可往下鑽' +
+    (chan ? '（通路別沒有目標，改看 YoY）' : (IDX.hasTargets ? '' : '（尚未上傳目標，僅顯示實績）'));
+
   if (!rows.length){ document.getElementById('gapTableBody').innerHTML = '<tr><td colspan="8" class="empty-note">此範圍沒有資料</td></tr>'; return; }
   // 手機一列一張卡，23 個品項會變成很長的一段捲動 → 先顯示前 8 名，其餘收在按鈕後面
   var gapLimit = (isNarrow() && !state.showAllGap) ? 8 : rows.length;
   var gapHidden = rows.length - gapLimit;
   document.getElementById('gapTableBody').innerHTML = rows.slice(0, gapLimit).map(function(r){
-    var cls = stateFor(r.achievement);
-    var label = r.achievement == null ? '未上傳目標' : r.achievement >= 1 ? '已達標，避免塞貨' : r.achievement < 0.9 ? '尚有缺口，評估回補' : '接近目標';
-    return '<tr>' +
-      '<td class="name">' + esc(r.name) + ' <span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span></td>' +
+    var cls, label;
+    if (chan){                       // 通路模式：狀態改看成長/衰退
+      cls = r.yoy == null ? 'none' : r.yoy >= 0.1 ? 'good' : r.yoy <= -0.1 ? 'critical' : 'watch';
+      label = r.yoy == null ? (r.actual ? '去年無基期' : '無交易')
+            : r.yoy >= 0.1 ? '成長中' : r.yoy <= -0.1 ? '衰退，需追蹤' : '持平';
+    } else {
+      cls = stateFor(r.achievement);
+      label = r.achievement == null ? '未上傳目標' : r.achievement >= 1 ? '已達標，避免塞貨' : r.achievement < 0.9 ? '尚有缺口，評估回補' : '接近目標';
+    }
+    var on = !!selSet[r.pi];
+    var head = '<td class="name"><span class="pick">' + (on ? '◉' : '○') + '</span> ' + esc(r.name) +
+      ' <span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span>' +
+      (r.excluded ? ' <span class="tag excl">停用</span>' : '') + '</td>' +
       '<td class="cat-cell"><span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span></td>' +
       '<td class="num" data-l="YTD 實績">' + compact(r.actual) + '</td>' +
-      '<td class="num" data-l="佔比"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:' + Math.min(r.share*100*3, 100).toFixed(0) + '%"></div></div><span>' + pct(r.share, 1) + '</span></div></td>' +
-      '<td class="num" data-l="YTD 目標">' + compact(r.target) + '</td>' +
-      '<td class="num" data-l="缺口／超前">' + (r.gap == null ? '—'
-          : r.gap > 0 ? '<span class="gap-behind">缺 ' + compact(r.gap) + '</span>'
-                      : '<span class="gap-ahead">超前 ' + compact(Math.abs(r.gap)) + '</span>') + '</td>' +
-      '<td class="num" data-l="達成率">' + pct(r.achievement, 0) + '</td>' +
+      '<td class="num" data-l="佔比"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:' + Math.min(r.share*100*3, 100).toFixed(0) + '%"></div></div><span>' + pct(r.share, 1) + '</span></div></td>';
+    var mid = chan
+      ? '<td class="num" data-l="去年同期">' + compact(r.prior) + '</td>' +
+        '<td class="num ' + (r.yoy == null ? '' : r.yoy >= 0 ? 'growth up' : 'growth down') + '" data-l="YoY">' + pctSigned(r.yoy) + '</td>'
+      : '<td class="num" data-l="YTD 目標">' + compact(r.target) + '</td>' +
+        '<td class="num" data-l="缺口／超前">' + (r.gap == null ? '—'
+            : r.gap > 0 ? '<span class="gap-behind">缺 ' + compact(r.gap) + '</span>'
+                        : '<span class="gap-ahead">超前 ' + compact(Math.abs(r.gap)) + '</span>') + '</td>' +
+        '<td class="num" data-l="達成率">' + pct(r.achievement, 0) + '</td>';
+    return '<tr class="gap-row' + (on ? ' is-sel' : '') + (r.excluded ? ' excl' : '') + '" data-pi="' + r.pi +
+      '" tabindex="0" role="button" aria-pressed="' + on + '" title="點一下把「' + esc(r.name) + '」設為分析範圍（可再點第二項做比較）">' +
+      head + mid +
       '<td class="status-cell"><span class="badge-row ' + cls + '"><span class="badge-dot"></span>' + label + '</span></td>' +
     '</tr>';
   }).join('');
+
+  Array.prototype.forEach.call(document.getElementById('gapTableBody').querySelectorAll('tr.gap-row'), function(tr){
+    function pick(){ toggleSku(+tr.getAttribute('data-pi')); }
+    tr.addEventListener('click', pick);
+    tr.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); } });
+  });
   var gapMore = document.getElementById('gapShowMore');
   if (gapMore){
     gapMore.innerHTML = '';
@@ -1767,11 +2504,18 @@ function customerDetailHtml(row){
   var newItems = bd.rows.filter(function(r){ return r.isNew; }).length;
   var lostItems = bd.rows.filter(function(r){ return r.isLost; }).length;
 
+  // 上方有選品項時，把那幾項釘到這張明細表最上面並標色：
+  // 客戶的完整品項組合仍然全部留著（拜訪前要看的是整體組合），但焦點放在你正在追的品項。
+  var selSet = {}; state.skus.forEach(function(i){ selSet[i] = 1; });
+  var selCount = 0;
+  bd.rows.forEach(function(r){ if (selSet[r.pi]) selCount++; });
+  if (selCount) bd.rows.sort(function(a, b){ return (selSet[b.pi] ? 1 : 0) - (selSet[a.pi] ? 1 : 0); });
+
   var lines = bd.rows.map(function(r){
     var badge = r.isNew ? '<span class="mini-badge good">新開</span>'
               : r.isLost ? '<span class="mini-badge critical">停買</span>' : '';
     var gcls = r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down';
-    return '<tr>' +
+    return '<tr' + (selSet[r.pi] ? ' class="is-sel"' : '') + '>' +
       '<td class="name">' + esc(r.name) + ' <span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span> ' + badge + '</td>' +
       '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
       '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
@@ -1799,6 +2543,9 @@ function customerDetailHtml(row){
       '</div>' +
       '<button class="btn ghost detail-close" data-close="1" title="收合">✕</button>' +
     '</div>' +
+    (selCount
+      ? '<p class="detail-note">上方已選的 ' + selCount + ' 個品項標在最前面；下面仍列出這家客戶的完整品項組合，方便拜訪前一起看。</p>'
+      : '') +
     '<div class="detail-table-wrap"><table class="detail-table rwd"><thead><tr>' +
       '<th>品項</th><th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">佔此客戶</th>' +
     '</tr></thead><tbody>' + (lines || '<tr><td colspan="5" class="empty-note">這個範圍內沒有品項資料</td></tr>') + '</tbody></table></div>' +
@@ -1810,7 +2557,8 @@ function renderCustomers(){
   var ids = scopeIds();
   var res = customerRows(ids, state.setMonth, 20);
   document.getElementById('custScopeHint').textContent =
-    scopeLabel() + (state.category === 'ALL' ? '（DED+GE 合計；Excel 版是 DED、GE 分開排名，切上方類別即可逐列對照）' : '');
+    (state.channel ? '通路：' + CHANNEL_LABEL[state.channel] + '｜' : '') + scopeLabel() +
+    (state.category === 'ALL' ? '（DED+GE 合計；Excel 版是 DED、GE 分開排名，切上方類別即可逐列對照）' : '');
   var callout = document.getElementById('top20Callout');
   if (!res.rows.length){
     callout.textContent = '此範圍沒有客戶資料。';
@@ -1840,7 +2588,7 @@ function renderCustomers(){
     var main = '<tr class="' + cls.join(' ') + '" data-ci="' + r.ci + '" tabindex="0" role="button" aria-expanded="' + open + '" title="點一下看這家客戶的品項明細">' +
       '<td class="num rank-cell" data-l="排名">' + (i+1) + '</td>' +
       '<td class="name"><span class="rank-inline">' + (i+1) + '.</span> <span class="disclose">' + (open ? '▾' : '▸') + '</span>' + esc(r.name) + '</td>' +
-      '<td data-l="通路">' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
+      '<td data-l="通路" title="原始標籤：' + esc(r.rawChannel || '—') + '">' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
       '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
       '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
       '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '" data-l="成長率">' + pctSigned(r.growth) + '</td>' +
@@ -1881,14 +2629,64 @@ function renderCustomers(){
     });
   });
 
+  // 通路面板：點一下就把下方的「客戶排名」與「品項缺口」篩到那個通路（KPI／趨勢圖維持全範圍）
   var chans = channelBreakdown(ids, state.setMonth);
-  document.getElementById('channelBars').innerHTML = chans.map(function(c){
-    return '<div class="chan-row">' +
-      '<span class="chan-label">' + c.label + '</span>' +
+  var bars = document.getElementById('channelBars');
+  bars.innerHTML = chans.map(function(c){
+    var on = state.channel === c.id;
+    return '<button type="button" class="chan-row' + (on ? ' is-on' : '') + '" data-chan="' + c.id + '"' +
+        ' aria-pressed="' + on + '" title="點一下只看' + c.label + '的客戶與品項">' +
+      '<span class="chan-label">' + c.label + (on ? '<span class="chan-on-flag">篩選中</span>' : '') + '</span>' +
       '<div class="chan-bar-track"><div class="chan-bar-fill" style="width:' + (c.share*100).toFixed(1) + '%;background:' + accentVar() + '"></div></div>' +
       '<div class="chan-figs"><span class="amt">' + compact(c.y2) + '</span> · ' + pct(c.share, 0) +
         ' · <span class="' + (c.growth == null ? '' : c.growth >= 0 ? 'growth up' : 'growth down') + '">' + pctSigned(c.growth) + '</span></div>' +
-    '</div>';
+    '</button>';
+  }).join('') +
+    (state.channel
+      ? '<button type="button" class="btn chan-reset" data-chan="">✕ 取消通路篩選，看全部</button>'
+      : '<p class="chan-tip">點任一通路，只看該通路的客戶排名與品項表現（上方 KPI 與趨勢圖不受影響）。</p>');
+
+  Array.prototype.forEach.call(bars.querySelectorAll('[data-chan]'), function(el){
+    el.addEventListener('click', function(){
+      var v = el.getAttribute('data-chan');
+      state.channel = (!v || state.channel === v) ? null : v;
+      state.openCustomer = null;
+      render();
+    });
+  });
+}
+
+/** 客戶名稱合併檢查：把「哪些原始名稱被併成同一家」全部攤出來給使用者自己核對。
+    同事的院所／部門叫法跟我不同，這一區就是讓他不必給我看資料也能自己驗收。 */
+function renderMergeCheck(){
+  var block = document.getElementById('mergeBlock');
+  if (!block) return;
+  var groups = IDX.customers.filter(function(c){ return c.rawNames && c.rawNames.length > 1; })
+    .sort(function(a, b){ return b.rawNames.length - a.rawNames.length ||
+                                 (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); });
+  block.hidden = false;
+  var total = IDX.customers.length;
+  var folded = groups.reduce(function(s2, g){ return s2 + g.rawNames.length; }, 0);
+  document.getElementById('mergeHint').textContent = groups.length
+    ? groups.length + ' 家院所由 ' + folded + ' 個原始名稱合併而成（共 ' + total + ' 家客戶）'
+    : '這份資料沒有任何名稱被合併（共 ' + total + ' 家客戶）';
+  var panel = document.getElementById('mergePanel');
+  var btn = document.getElementById('mergeToggle');
+  btn.textContent = state.showMerge ? '收合 ▴' : '展開核對 ▾';
+  btn.onclick = function(){ state.showMerge = !state.showMerge; renderMergeCheck(); };
+  panel.hidden = !state.showMerge;
+  if (!state.showMerge) return;
+  document.getElementById('mergeIntro').innerHTML = groups.length
+    ? '同一家院所被拆成藥庫、手術室、眼科部…等多個送貨點時，這裡會把它們併成一家一起算。' +
+      '判斷方式是「通用部門字樣」加上「拿這份檔案自己的客戶名單互相比對」，<b>沒有寫死任何客戶名稱</b>，' +
+      '所以不同業務的院所與部門叫法都適用。下面是這份資料實際併了哪些，請核對一下；' +
+      '分院／院區（不同地點）與本身就是一家機構的名字都不會被併。'
+    : '這份資料裡沒有任何一家院所被拆成多個送貨點，所以不需要合併。';
+  document.getElementById('mergeList').innerHTML = groups.map(function(g){
+    return '<div class="merge-item"><div class="merge-to">' + esc(g.name) +
+      ' <span class="tag ded">' + g.rawNames.length + ' 個送貨點</span></div>' +
+      '<div class="merge-from"><ul>' + g.rawNames.map(function(r){
+        return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div></div>';
   }).join('');
 }
 
@@ -1913,9 +2711,14 @@ function renderSourceBar(){
       ? '目前是示範資料（客戶名稱都以「（示範）」開頭），用來說明版面與計算邏輯；上傳你自己的原始檔後，所有數字與客戶名稱都會換成你的實際資料。'
       : '') +
     '上傳的檔案完全在你自己的瀏覽器裡解析與保存（localStorage），沒有送到伺服器，<b>把這個連結分享給同事，他看到的也只會是示範資料</b>，他可以直接上傳自己的檔案來用——等於 Excel 版「通用套版」的網頁版。' +
-    '計算邏輯沿用 Excel 版「DEOH_銷售動態儀表板」：YTD／QTD／MTD、缺口與達成率、Top20 集中度、同院所不同送貨點合併（臺北榮總、振興、輔大、三重、蘭陽院區）。' +
+    '計算邏輯沿用 Excel 版「DEOH_銷售動態儀表板」：YTD／QTD／MTD、缺口與達成率、Top20 集中度、同院所不同送貨點合併。' +
+    '合併規則不含任何寫死的客戶名稱，是用通用部門字樣加上這份檔案自己的客戶名單互相比對推出來的，' +
+    '實際併了哪些請看上方「客戶名稱合併檢查」。' +
     '通路分類：DED 依 <code>Customer classification</code>（Medical Facility＝醫院、Diagnostic Facility＋Retail＝診所、Pharmacy Independent＝獨立藥局、Pharmacy Retail＝其他連鎖藥局）；' +
-    'GE 依 <code>Customer Channel</code>（HP＝醫院、GP／P1＝診所、DS／T1＝藥局，GE 原始資料沒有再分獨立／連鎖，一律歸入獨立藥局）。';
+    'GE 依 <code>Customer Channel</code>（HP＝醫院、GP／P1＝診所、DS／T1＝藥局）；GE 原始資料不分獨立／連鎖，' +
+    '所以名稱含全國性連鎖品牌字樣者改歸「其他連鎖藥局」，名稱明顯是院所者以名稱為準。' +
+    '品項順序依看盤習慣固定排列；<b>' + EXCLUDED_NAMES.join('、') + '</b> 預設不列入計算（實績與目標都不算），' +
+    '需要核對時可在上方篩選列勾「含停用品項」。';
 }
 
 function safe(fn, label){ try { fn(); } catch(e){ console.error('render step failed:', label, e); } }
@@ -1924,12 +2727,13 @@ function render(){
   safe(renderSourceBar, 'sourceBar');
   safe(renderSetMonth, 'setMonth');
   safe(renderCategoryPills, 'categoryPills');
-  safe(renderSubcatPills, 'subcatPills');
-  safe(renderSkuSelect, 'skuSelect');
+  safe(renderSubcatPills, 'subcatPills');   // 內含第二層 renderLeafPills
+  safe(renderSkuPicker, 'skuPicker');
   safe(renderKPIs, 'kpis');
   safe(renderCharts, 'charts');
   safe(renderGapTable, 'gapTable');
   safe(renderCustomers, 'customers');
+  safe(renderMergeCheck, 'mergeCheck');
 }
 
 /* ==========================================================================
@@ -1945,7 +2749,7 @@ function setData(ds, keepMonth){
   IDX = buildIndex(ds);
   if (!keepMonth) state.setMonth = IDX.latestMonth;
   state.setMonth = Math.min(Math.max(1, state.setMonth), 12);
-  if (state.sku !== 'ALL' && !IDX.products[+state.sku]) state.sku = 'ALL';
+  state.skus = state.skus.filter(function(i){ return !!IDX.products[i]; });
   render();
 }
 
