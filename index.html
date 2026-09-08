@@ -107,6 +107,7 @@
   .upload-status{ font-size:12px; color:var(--ink-muted); margin-top:8px; }
   .upload-status.error{ color:var(--critical); }
   .upload-status.ok{ color:var(--good); }
+  .upload-status.warn{ color:var(--watch); }
 
   /* ---------- sections ---------- */
   section.block{ margin-top:28px; }
@@ -319,6 +320,95 @@
   .chan-bar-fill{ height:100%; background:var(--accent-ded); }
   .chan-figs{ width:158px; text-align:right; font-size:11.5px; color:var(--ink-muted); flex-shrink:0; font-family:'IBM Plex Mono',monospace; }
   .chan-figs .amt{ color:var(--ink); font-weight:600; font-size:12.5px; }
+  /* 重點追蹤：兩張大卡 */
+  .focus-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:860px){ .focus-grid{ grid-template-columns:1fr; } }
+  .focus-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent-ded);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:15px 18px; }
+  .focus-card.warn{ border-left-color:var(--watch); }
+  .focus-label{ font-size:11.5px; font-weight:600; letter-spacing:.05em; color:var(--ink-faint); }
+  .focus-big{ display:flex; align-items:baseline; gap:9px; margin:5px 0 2px; flex-wrap:wrap; }
+  .focus-num{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;
+    font-size:34px; font-weight:600; line-height:1.05; letter-spacing:-.02em; }
+  .focus-unit{ font-size:14px; color:var(--ink-muted); }
+  .focus-sub{ font-size:12px; color:var(--ink-muted); }
+  .focus-rows{ margin:11px 0 0; padding:9px 0 0; border-top:1px solid var(--border); }
+  .focus-row{ display:flex; align-items:center; gap:9px; font-size:12px; padding:3px 0; }
+  .focus-row .fr-k{ width:74px; color:var(--ink-muted); flex:0 0 auto; }
+  .focus-row .fr-bar{ flex:1 1 auto; height:8px; border-radius:99px; background:var(--surface-2); overflow:hidden; min-width:30px; }
+  .focus-row .fr-bar i{ display:block; height:100%; border-radius:99px; background:var(--accent-ded); }
+  .focus-row .fr-v{ flex:0 0 auto; font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;
+    color:var(--ink); font-size:12px; min-width:74px; text-align:right; }
+  .focus-read{ font-size:12px; color:var(--ink-muted); line-height:1.75; margin:10px 0 0;
+    padding-top:9px; border-top:1px dashed var(--border); }
+  .focus-read b{ color:var(--ink); }
+  .focus-read .down{ color:var(--critical); font-weight:600; } .focus-read .up{ color:var(--good); font-weight:600; }
+  .more-wrap{ margin-top:14px; }
+  .more-wrap .insight-grid{ margin-top:12px; }
+  .more-wrap .pillset{ margin-top:10px; }
+
+  /* 深入分析：品項 → 通路 → 客戶明細 */
+  .ins-card.wide{ grid-column:1 / -1; }
+  .pv-item{ border-top:1px solid var(--border); padding:11px 0 3px; }
+  .pv-item:first-child{ border-top:none; }
+  .pv-head{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:7px; }
+  .pv-name{ font-weight:700; font-size:13px; }
+  .pv-stat{ font-size:11.5px; color:var(--ink-muted); margin-left:auto; }
+  .pv-stat b{ font-family:'IBM Plex Mono',monospace; }
+  .pv-rows{ display:grid; gap:3px; }
+  .pv-row{ display:flex; align-items:center; gap:8px; font-size:11.5px; }
+  .pv-k{ width:74px; flex:0 0 auto; color:var(--ink-muted); }
+  .pv-bar{ flex:1 1 auto; height:7px; border-radius:99px; background:var(--surface-2); overflow:hidden; min-width:24px; }
+  .pv-bar i{ display:block; height:100%; border-radius:99px; }
+  .pv-bar i.neg{ background:var(--critical); } .pv-bar i.pos{ background:var(--good); }
+  .pv-v{ flex:0 0 auto; min-width:118px; text-align:right; font-family:'IBM Plex Mono',monospace; color:var(--ink-muted); }
+  .pv-d{ flex:0 0 auto; min-width:64px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  .pv-d.down{ color:var(--critical); } .pv-d.up{ color:var(--good); }
+  .pv-note{ font-size:11.5px; color:var(--ink-muted); margin:7px 0 0; line-height:1.7; }
+  .pv-note b{ color:var(--ink); }
+  .dl-btn{ margin-left:4px; }
+  .dl-box{ margin:9px 0 4px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; }
+  .dl-cap{ font-size:11.5px; font-weight:600; color:var(--ink-muted); margin:0 0 7px; }
+  .dl-wrap{ overflow-x:auto; }
+  table.dl-table{ min-width:520px; font-size:12px; background:var(--surface); border-radius:var(--radius-sm); }
+  table.dl-table thead th{ padding:7px 10px; font-size:10.5px; }
+  table.dl-table tbody td{ padding:6px 10px; }
+  table.dl-table td.why{ color:var(--critical); font-size:11.5px; }
+  .dl-empty{ font-size:12px; color:var(--ink-faint); margin:0; }
+  .focus-acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:9px; }
+  .tg-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; padding-top:9px; border-top:1px dashed var(--border); }
+  .tg-lab{ font-size:11px; font-weight:600; color:var(--ink-faint); }
+  .tg-btn{ font-family:inherit; font-size:11px; padding:2px 9px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--border-strong); background:var(--surface); color:var(--ink-faint); }
+  .tg-btn.on{ background:var(--accent-ded-soft); border-color:var(--accent-ded); color:var(--accent-ded); font-weight:600; }
+  .tg-note{ font-size:10.5px; color:var(--ink-faint); flex:1 1 100%; }
+
+  /* 洞察卡 */
+  .insight-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+  .ins-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border-strong);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:13px 15px; }
+  .ins-card.risk{ border-left-color:var(--critical); }
+  .ins-card.opp{ border-left-color:var(--good); }
+  .ins-card.strat{ border-left-color:var(--accent-ded); }
+  .ins-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+  .ins-chip{ font-size:10.5px; font-weight:700; letter-spacing:.04em; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .ins-card.risk .ins-chip{ background:var(--critical-soft); color:var(--critical); }
+  .ins-card.opp .ins-chip{ background:var(--good-soft); color:var(--good); }
+  .ins-card.strat .ins-chip{ background:var(--accent-ded-soft); color:var(--accent-ded); }
+  .ins-title{ font-family:'Manrope','Noto Sans TC',sans-serif; font-size:13.5px; font-weight:700; line-height:1.45; }
+  .ins-read{ font-size:12px; color:var(--ink-muted); line-height:1.75; margin:4px 0 8px; }
+  .ins-read b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
+  .ins-read .up{ color:var(--good); font-weight:600; } .ins-read .down{ color:var(--critical); font-weight:600; }
+  .ins-list{ margin:0; padding:0; list-style:none; border-top:1px solid var(--border); padding-top:7px; }
+  .ins-list li{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+    font-size:12px; padding:3px 0; line-height:1.5; }
+  .ins-link{ background:none; border:none; padding:0; font:inherit; color:var(--accent-ded); cursor:pointer;
+    text-align:left; text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--border-strong); }
+  .ins-link:hover{ text-decoration-color:var(--accent-ded); }
+  .ins-val{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; color:var(--ink-muted); flex:0 0 auto; }
+  .ins-act{ font-size:11.5px; color:var(--ink-faint); margin:8px 0 0; line-height:1.6; border-top:1px dashed var(--border); padding-top:7px; }
+  .ins-act b{ color:var(--ink-muted); }
+
   /* 客戶搜尋 + 標註 */
   .cust-tools{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-bottom:11px; }
   .search-wrap{ position:relative; flex:1 1 260px; min-width:0; }
@@ -566,14 +656,16 @@
     <div class="source-main">
       <p class="source-title" id="sourceTitle">目前顯示：示範資料（不是你的實際出貨數字）</p>
       <p class="source-desc" id="sourceDesc">
-        把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>，
-        會自動找出 <code>DED資料</code>、<code>GE資料</code>、<code>Target&amp;Sales</code> 三張表，整份儀表板即時重算。
+        把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>。
+        公司每月給的原始月報（分頁叫「工作表1／工作表2」也沒關係）可以直接上傳，會自動辨認；
+        新檔涵蓋的月份會整個換新，其他月份沿用先前的資料。
       </p>
       <p class="upload-status" id="uploadStatus"></p>
     </div>
     <div class="source-actions">
       <input type="file" id="fileInput" accept=".xlsx,.csv" multiple hidden />
       <button class="btn primary" id="uploadBtn">上傳原始檔</button>
+      <label class="fcheck" title="勾起來＝這次上傳的檔案取代全部歷史資料；不勾＝只換掉檔案裡有的月份"><input type="checkbox" id="replaceAll"><span>覆蓋全部月份</span></label>
       <button class="btn ghost" id="resetBtn" hidden>清除，回到示範資料</button>
     </div>
   </div>
@@ -607,6 +699,22 @@
         <p class="chart-scope" id="scopeSelected">—</p>
         <div class="chart-holder" id="holderSelected"></div>
         <div class="legend-row" id="legendSelected"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="insightBlock">
+    <div class="block-head">
+      <h2>重點追蹤</h2>
+      <div class="head-tools"><span class="hint" id="insightHint"></span>
+        <button type="button" class="btn tiny" id="insightToggle"></button></div>
+    </div>
+    <div id="insightBody">
+      <div class="focus-grid" id="focusGrid"></div>
+      <div class="more-wrap">
+        <button type="button" class="btn tiny" id="insightMore"></button>
+        <div class="pillset" id="insightPills" hidden></div>
+        <div class="insight-grid" id="insightGrid" hidden></div>
       </div>
     </div>
   </section>
@@ -833,8 +941,17 @@ var SEP_CHARS = '－-—–(（／/';
 /** 第 ① 步：去掉法人前綴與部門字樣，得到「基底名稱」 */
 function baseName(raw){
   var n = String(raw == null ? '' : raw).replace(/[\s　]+/g, ' ').trim();
+  // 「…醫療／學校財團法人○○醫院」這種法人前綴要去掉，只留真正的院所名。
+  // 但兩種情況不能砍，否則會把院所名整個切掉：
+  //   ① 「財團法人」出現在括號裡（例：某某醫院(委託○○醫療財團法人新建經營)）——那是經營者註記，不是前綴
+  //   ② 砍完之後剩下的字不像一家院所（沒有醫院／診所／藥局…等字樣）
   var legal = n.indexOf('財團法人');
-  if (legal >= 0) n = n.slice(legal + 4).trim();
+  if (legal >= 0){
+    var before = n.slice(0, legal);
+    var inBracket = /[(（][^)）]*$/.test(before);        // 前面有沒有還沒關起來的括號
+    var rest = n.slice(legal + 4).trim();
+    if (!inBracket && rest && /醫院|診所|藥局|藥房|醫學中心|療養院|衛生所|醫務室|健檢中心/.test(rest)) n = rest;
+  }
   var prev = null;
   while (prev !== n){
     prev = n;
@@ -1196,11 +1313,28 @@ function headerIndex(header, names){
   header.forEach(function(h, i){ if (names.indexOf(String(h||'').trim()) >= 0) hit.push(i); });
   return hit;
 }
+/* 公司每個月給的原始檔，欄位名稱是英文原名；你自己整理過的主檔則改成中文。
+   兩種都要認得，同事才不用先貼進主檔再上傳。欄位位置一樣，只是抬頭不同：
+     診所名稱 = Ship Name        品項 = MD PHL7 Class
+     Sales    = Net Sales (COPA Equivalent)      月 = 由 Billing doc. date 推算  */
+var DED_CUST_NAMES = ['診所名稱','Ship Name','Ship-to Name','Ship To Name'];
+var DED_PROD_NAMES = ['品項','MD PHL7 Class'];
+var DED_AMT_NAMES  = ['Sales','Net Sales (COPA Equivalent)','Net Sales (COPA \nEquivalent)','Invoice Sales'];
+function firstIndex(h, names){
+  for (var i = 0; i < names.length; i++){
+    var k = h.indexOf(names[i]);
+    if (k >= 0) return k;
+  }
+  return -1;
+}
+/** 有些抬頭帶換行或多餘空白，統一壓成一行再比對 */
+function tidyHeader(header){
+  return header.map(function(x){ return String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); });
+}
 function detectSheetKind(header){
-  var h = header.map(function(x){ return String(x||'').trim(); });
-  var has = function(n){ return h.indexOf(n) >= 0; };
-  if (has('診所名稱') && has('品項')) return 'DED';
-  if (has('Customer Name') && has('Item Description')) return 'GE';
+  var h = tidyHeader(header);
+  if (firstIndex(h, DED_CUST_NAMES) >= 0 && firstIndex(h, DED_PROD_NAMES) >= 0) return 'DED';
+  if (h.indexOf('Customer Name') >= 0 && h.indexOf('Item Description') >= 0) return 'GE';
   return null;
 }
 function monthKeyFrom(row, idx){
@@ -1308,16 +1442,16 @@ function makeCollector(){
 }
 
 function ingestSalesRows(kind, header, rowIter, col){
-  var h = header.map(function(x){ return String(x||'').trim(); });
+  var h = tidyHeader(header);
   var idx;
   if (kind === 'DED'){
     var chanCols = headerIndex(h, ['Customer classification']);
-    // 金額欄固定用「Sales」：已逐品項對過 Monthly Report 的「2026 Sales」，到個位數相符。
-    // 「Invoice Sales」是開票金額（略高、未扣折讓），只有在檔案沒有 Sales 欄時才退而求其次。
-    var amtCol = h.indexOf('Sales');
-    if (amtCol < 0) amtCol = h.indexOf('Invoice Sales');
+    // 金額欄優先用「Sales」／原始檔的「Net Sales (COPA Equivalent)」：已逐品項對過
+    // Monthly Report 的「2026 Sales」，到個位數相符。「Invoice Sales」是開票金額
+    // （略高、未扣折讓），只有在檔案兩者都沒有時才退而求其次。
+    var amtCol = firstIndex(h, DED_AMT_NAMES);
     idx = {
-      cust: h.indexOf('診所名稱'), prod: h.indexOf('品項'), amt: amtCol,
+      cust: firstIndex(h, DED_CUST_NAMES), prod: firstIndex(h, DED_PROD_NAMES), amt: amtCol,
       chan: chanCols.length ? chanCols[chanCols.length - 1] : -1,   // 兩欄同名，文字那欄在後面
       mk: h.indexOf('月'), year: h.indexOf('年'), period: -1, date: h.indexOf('Billing doc. date')
     };
@@ -1478,11 +1612,15 @@ async function buildDatasetFromFiles(files, onProgress){
     }
     var wb = await readWorkbook(file, onProgress);
     var matched = 0;
-    for (var s = 0; s < wb.sheetNames.length; s++){
-      var sname = wb.sheetNames[s];
+    // 先用分頁名稱找（主檔的 DED資料／GE資料／Target），找不到再看表頭認原始月報
+    var named = wb.sheetNames.filter(function(x){
+      return /^(DED資料|GE資料)$/.test(x) || /target/i.test(x) || x === 'Product_Monthly';
+    });
+    var scanList = named.length ? named : wb.sheetNames;
+    for (var s = 0; s < scanList.length; s++){
+      var sname = scanList[s];
       // 目標可能來自：Monthly Report 的「Target&Sales」，或儀表板檔的「Product_Monthly」
       var isTarget = /target/i.test(sname) || sname === 'Product_Monthly';
-      if (!/^(DED資料|GE資料)$/.test(sname) && !isTarget) continue;
       if (isTarget){
         var trows = [];
         await wb.readSheet(sname, function(cells){ trows.push(cells); });
@@ -1496,7 +1634,9 @@ async function buildDatasetFromFiles(files, onProgress){
         buffered.push(cells);
       });
       if (!header) continue;
-      var k = detectSheetKind(header) || (sname === 'DED資料' ? 'DED' : 'GE');
+      var k = detectSheetKind(header) ||
+              (sname === 'DED資料' ? 'DED' : sname === 'GE資料' ? 'GE' : null);
+      if (!k) continue;              // 看表頭都認不出來的分頁就跳過（不是原始資料）
       var r2 = ingestSalesRows(k, header, function(cb){ buffered.forEach(cb); }, col);
       sources.push({ name:file.name, sheet:sname, rows:r2.used, scanned:r2.scanned });
       totalUsed += r2.used; matched++;
@@ -1521,6 +1661,84 @@ async function buildDatasetFromFiles(files, onProgress){
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
     products: col.products, customers: col.customers, facts: col.finish(), targets: col.targets
   };
+}
+
+/** 把新上傳的資料「併」進既有資料：新檔涵蓋到的年月整個換掉，其餘月份原封不動保留。
+    這樣每個月拿到公司的單月原始檔就能直接上傳，不必先貼回主檔；
+    重覆上傳同一個月也不會變成兩倍（那個月會被整個取代）。 */
+function mergeDatasets(oldDs, newDs){
+  var touched = {};
+  newDs.facts.forEach(function(f){ touched[f[2] + '-' + f[3]] = 1; });
+
+  var prodIdx = {}, products = [], custIdx = {}, customers = [], agg = {};
+  function pid(name, cat){
+    var k = name + '||' + cat;
+    if (prodIdx[k] == null){ prodIdx[k] = products.length; products.push([name, cat]); }
+    return prodIdx[k];
+  }
+  function cid(entry){
+    var k = entry[0];
+    if (custIdx[k] == null){ custIdx[k] = customers.length; customers.push(entry.slice()); }
+    return custIdx[k];
+  }
+  function absorb(ds, keep){
+    if (!ds) return;
+    ds.facts.forEach(function(f){
+      if (!keep(f)) return;
+      var c = ds.customers[f[0]], p = ds.products[f[1]];
+      if (!c || !p) return;
+      var k = cid(c) + '|' + pid(p[0], p[1]) + '|' + f[2] + '|' + f[3];
+      agg[k] = (agg[k] || 0) + f[4];
+    });
+  }
+  absorb(newDs, function(){ return true; });                                  // 新檔全部收下
+  absorb(oldDs, function(f){ return !touched[f[2] + '-' + f[3]]; });          // 舊檔只留新檔沒碰到的月份
+
+  var facts = [];
+  Object.keys(agg).forEach(function(k){
+    var v = Math.round(agg[k]); if (!v) return;
+    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v ]);
+  });
+
+  // 目標：新檔有帶目標就用新的，否則沿用舊的（都以品項名稱對應，索引會變）
+  function carryTargets(ds){
+    var out = [];
+    ds.targets.forEach(function(t){
+      var p = ds.products[t[0]];
+      if (!p) return;
+      out.push([ pid(p[0], p[1]), t[1], t[2], t[3] ]);
+    });
+    return out;
+  }
+  var targets = (newDs.targets && newDs.targets.length) ? carryTargets(newDs)
+              : (oldDs && oldDs.targets ? carryTargets(oldDs) : []);
+
+  var srcs = (newDs.sources || []).slice();
+  (oldDs && oldDs.sources ? oldDs.sources : []).forEach(function(x){
+    if (!srcs.some(function(y){ return y.name === x.name && y.sheet === x.sheet; })) srcs.push(x);
+  });
+  return {
+    v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:srcs.slice(0, 8),
+    products:products, customers:customers, facts:facts, targets:targets,
+    mergedMonths: Object.keys(touched).sort()
+  };
+}
+
+/** 每個「年-月」的金額小計，用來提醒「這次上傳的某個月比原本少很多」 */
+function monthTotals(ds){
+  var t = {};
+  if (ds && ds.facts) ds.facts.forEach(function(f){
+    var k = f[2] + '-' + String(f[3]).padStart(2,'0');
+    t[k] = (t[k] || 0) + f[4];
+  });
+  return t;
+}
+
+/** 這份資料涵蓋哪幾個「年-月」，用來告訴使用者目前手上有多少資料 */
+function coveredMonths(ds){
+  var mm = {};
+  ds.facts.forEach(function(f){ mm[f[2] + '-' + String(f[3]).padStart(2,'0')] = 1; });
+  return Object.keys(mm).sort();
 }
 
 /* ==========================================================================
@@ -1762,7 +1980,11 @@ var state = {
   mobileFilters:false,     // 手機且 KPI 釘在上方時，篩選列是否展開
   showMerge:false,         // 頁尾「客戶名稱合併檢查」是否展開
   custSearch:'',           // 客戶名稱搜尋
-  tagFilter:null           // 只看某個標註的客戶
+  tagFilter:null,          // 只看某個標註的客戶
+  insCat:'ALL',            // 其他分析的分類篩選
+  insOpen:true,            // 「重點追蹤」整區是否展開
+  insMore:false,           // 深入分析是否展開
+  insExpand:{}             // 各個「展開明細」的開關
 };
 
 /** 大分類（系列）選項；只列出這份資料真的有的，別人的檔案沒有的系列不會空著佔位 */
@@ -2873,6 +3095,552 @@ function renderMergeCheck(){
   }).join('');
 }
 
+
+/* ==========================================================================
+   8.5 洞察引擎 — 全部即時從目前資料算出來，沒有任何寫死的結論
+   --------------------------------------------------------------------------
+   對照你平常在看的四件事：下單頻率下降、品項缺少、診所動向、可開發的地方，
+   再加上目前的策略重點（DED 主推 MDPF、降單支裝；GE 主打 Vigamox／Nevanac／Azopt）。
+   重點品項是用「品名規則」判定而不是寫死清單，同事的資料一樣適用。
+   ========================================================================== */
+var MDPF_RE = /MDPF/;
+var UNITDOSE_RE = /UNIT\s*DOSE|UNITDOSE/;
+var GE_FOCUS_RE = /VIGAMOX|NEVANAC|AZOPT/;
+
+/** 把每個客戶的「今年/去年金額、有下單的月份、各品項金額」一次算好 */
+function insightBase(){
+  // 跟著上方篩選走：切到青光眼就只講青光眼的事，選定某個品項就只看那個品項的客戶
+  var m = state.setMonth, ids = scopeIds();
+  var pool = ids.map(function(i){ return IDX.products[i]; }).filter(Boolean);
+  var pset = {}, mdpf = [], ud = [], gef = [];
+  pool.forEach(function(p){
+    pset[p.i] = 1;
+    var nm = normName(p.name);
+    if (MDPF_RE.test(nm)) mdpf.push(p.i);
+    if (UNITDOSE_RE.test(nm)) ud.push(p.i);
+    if (p.category === 'GE' && GE_FOCUS_RE.test(nm)) gef.push(p.i);
+  });
+  var C = {};
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[3] > m) return;
+    var c = C[f[0]] || (C[f[0]] = { ci:f[0], y1:0, y2:0, mc:{}, mp:{}, pc:{}, pp:{}, last:0 });
+    if (f[2] === IDX.curYear){
+      c.y2 += f[4]; c.pc[f[1]] = (c.pc[f[1]] || 0) + f[4];
+      if (f[4] > 0){ c.mc[f[3]] = 1; if (f[3] > c.last) c.last = f[3]; }
+    } else if (f[2] === IDX.priorYear){
+      c.y1 += f[4]; c.pp[f[1]] = (c.pp[f[1]] || 0) + f[4];
+      if (f[4] > 0) c.mp[f[3]] = 1;
+    }
+  });
+  var list = Object.keys(C).map(function(k){
+    var c = C[k], cu = IDX.customers[c.ci];
+    c.name = cu ? cu.name : '(未知客戶)';
+    c.channel = cu ? cu.channel : 'Other';
+    c.nCur = Object.keys(c.mc).length;
+    c.nPri = Object.keys(c.mp).length;
+    c.growth = c.y1 ? c.y2 / c.y1 - 1 : null;
+    return c;
+  });
+  function sum(o, ids){ var t = 0; ids.forEach(function(i){ t += o[i] || 0; }); return t; }
+  list.forEach(function(c){
+    c.mdpfCur = sum(c.pc, mdpf); c.udCur = sum(c.pc, ud); c.udPri = sum(c.pp, ud);
+  });
+  return { m:m, rows:list, mdpf:mdpf, ud:ud, gef:gef, pool:pool };
+}
+
+/** 捲到某個區塊時，把黏在畫面上方的篩選列高度讓出來，內容才不會被蓋住 */
+function scrollToBlock(el){
+  if (!el) return;
+  var fb = document.querySelector('.filterbar');
+  var offset = (fb ? fb.getBoundingClientRect().height : 0) + 14;
+  var y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+  window.scrollTo({ top: Math.max(0, y), behavior:'smooth' });
+}
+
+function insLink(label, act, val){
+  return '<button type="button" class="ins-link" data-act="' + act + '" data-val="' + esc(String(val)) + '">' + esc(label) + '</button>';
+}
+function insList(items){
+  if (!items.length) return '';
+  return '<ul class="ins-list">' + items.map(function(it){
+    return '<li>' + insLink(it.label, it.act, it.val) + '<span class="ins-val">' + it.right + '</span></li>';
+  }).join('') + '</ul>';
+}
+function custItems(rows, right){
+  return rows.map(function(c){ return { label:c.name, act:'cust', val:c.name, right:right(c) }; });
+}
+
+/* -------------------- 目標通路設定（每個重點品項要盯哪些通路） --------------------
+   系統無從得知「這支還沒推到藥局」這種商業判斷，所以：
+     預設 = 已經有進貨的通路 ＋ 醫療院所（診所／醫院），藥局要有實際進貨才會出現；
+     你也可以自己勾選，選擇會存在瀏覽器裡（跟業績資料分開，重新上傳不會消失）。 */
+var FOCUS_KEY = 'deoh-pulse-focus-v1';
+var FOCUS_CFG = {};
+function loadFocusCfg(){
+  try { var r = localStorage.getItem(FOCUS_KEY); var o = r ? JSON.parse(r) : null;
+        return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  catch(e){ return {}; }
+}
+function saveFocusCfg(){ try { localStorage.setItem(FOCUS_KEY, JSON.stringify(FOCUS_CFG)); } catch(e){} }
+var CHAN_ORDER = [['Clinic','診所'],['Hospital','醫院'],['Independent','獨立藥局'],['Chain','連鎖藥局'],['Other','未分類']];
+
+/** 某個重點品項的預設目標通路：有進貨的一定算，醫療院所一律算，藥局沒進貨就不算 */
+function defaultTargets(adoptByChan){
+  var out = [];
+  CHAN_ORDER.forEach(function(g){
+    var isMedical = (g[0] === 'Clinic' || g[0] === 'Hospital');
+    if ((adoptByChan[g[0]] || 0) > 0 || isMedical) out.push(g[0]);
+  });
+  return out;
+}
+function targetsFor(key, adoptByChan){
+  var saved = FOCUS_CFG[key];
+  return (saved && saved.length) ? saved : defaultTargets(adoptByChan);
+}
+
+function insLink(label, act, val){
+  return '<button type="button" class="ins-link" data-act="' + act + '" data-val="' + esc(String(val)) + '">' + esc(label) + '</button>';
+}
+/** 可展開的客戶明細：每一列都可以點進去看那家的品項組合 */
+function detailTable(rows, extra){
+  if (!rows.length) return '<p class="dl-empty">沒有符合的客戶。</p>';
+  return '<div class="dl-wrap"><table class="dl-table"><thead><tr>' +
+      '<th class="num">#</th><th>客戶名稱</th><th>通路</th><th class="num">去年 YTD</th>' +
+      (extra ? '<th class="num">' + esc(extra.head) + '</th>' : '') +
+      '<th class="num">今年 YTD</th><th class="num">下單月數</th>' +
+    '</tr></thead><tbody>' + rows.map(function(r, i){
+      return '<tr><td class="num">' + (i+1) + '</td>' +
+        '<td>' + insLink(r.name, 'cust', r.name) + '</td>' +
+        '<td>' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
+        '<td class="num">' + compact(r.y1) + '</td>' +
+        (extra ? '<td class="num">' + extra.get(r) + '</td>' : '') +
+        '<td class="num">' + compact(r.y2) + '</td>' +
+        '<td class="num">' + (r.nCur == null ? '—' : r.nCur) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+function expandBtn(key, openLabel, shutLabel){
+  var on = !!state.insExpand[key];
+  return '<button type="button" class="btn tiny dl-btn" data-exp="' + esc(key) + '">' +
+         (on ? shutLabel + ' ▴' : openLabel + ' ▾') + '</button>';
+}
+
+/* ==========================================================================
+   業績評估：先找出有問題的品項，再看問題出在哪個通路
+   ========================================================================== */
+function reviewCards(){
+  var B = insightBase(), m = B.m, rows = B.rows, cards = [];
+  var ids = scopeIds();
+
+  // 每個「品項 × 通路」今年/去年金額
+  var pc = {};
+  var pset = {}; ids.forEach(function(i){ pset[i] = 1; });
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[3] > m) return;
+    var cu = IDX.customers[f[0]], ch = cu ? cu.channel : 'Other';
+    var k = f[1] + '|' + ch, o = pc[k] || (pc[k] = { y1:0, y2:0 });
+    if (f[2] === IDX.curYear) o.y2 += f[4]; else if (f[2] === IDX.priorYear) o.y1 += f[4];
+  });
+
+  // 有問題 = 未達標，或較去年衰退；依「缺口 + 衰退額」排序
+  var probs = ids.map(function(pi){
+    var p = IDX.products[pi], st = periodStats([pi], 1, m);
+    var gap = (st.gap != null && st.gap > 0) ? st.gap : 0;
+    var drop = (st.prior > st.actual) ? st.prior - st.actual : 0;
+    return { pi:pi, name:p.name, cat:p.category, st:st, gap:gap, drop:drop, score:gap + drop };
+  }).filter(function(x){ return x.score > 0; })
+    .sort(function(a, b){ return b.score - a.score; });
+
+  if (!probs.length){
+    cards.push({ key:'rev-none', tone:'good', chip:'業績評估',
+      title:'這個範圍沒有落後或衰退的品項', read:'全部品項都達標且較去年成長。', body:'' });
+    return { cards:cards, base:B };
+  }
+
+  var top = probs.slice(0, 5);
+  var body = top.map(function(x){
+    var chans = CHAN_ORDER.map(function(g){
+      var o = pc[x.pi + '|' + g[0]] || { y1:0, y2:0 };
+      return { id:g[0], label:g[1], y1:o.y1, y2:o.y2, diff:o.y2 - o.y1,
+               yoy: o.y1 ? o.y2 / o.y1 - 1 : null };
+    }).filter(function(c){ return c.y1 || c.y2; })
+      .sort(function(a, b){ return a.diff - b.diff; });          // 掉最多的排前面
+    var worst = chans[0];
+    var maxAbs = Math.max.apply(null, chans.map(function(c){ return Math.abs(c.diff); }).concat([1]));
+    var key = 'rev-' + x.pi;
+    var chanRows = chans.map(function(c){
+      var w = Math.abs(c.diff) / maxAbs * 100;
+      return '<div class="pv-row"><span class="pv-k">' + c.label + '</span>' +
+        '<span class="pv-bar"><i class="' + (c.diff < 0 ? 'neg' : 'pos') + '" style="width:' + w.toFixed(0) + '%"></i></span>' +
+        '<span class="pv-v">' + compact(c.y1) + ' → ' + compact(c.y2) + '</span>' +
+        '<span class="pv-d ' + (c.diff < 0 ? 'down' : 'up') + '">' + (c.diff >= 0 ? '+' : '') + compact(c.diff) + '</span></div>';
+    }).join('');
+    // 展開：這個品項在「掉最多的那個通路」裡，是哪些客戶造成的
+    var detail = '';
+    if (state.insExpand[key] && worst){
+      var cu = {};
+      DATA.facts.forEach(function(f){
+        if (f[1] !== x.pi || f[3] > m) return;
+        var c = IDX.customers[f[0]];
+        if (!c || c.channel !== worst.id) return;
+        var o = cu[f[0]] || (cu[f[0]] = { name:c.name, channel:c.channel, y1:0, y2:0, nCur:0, mm:{} });
+        if (f[2] === IDX.curYear){ o.y2 += f[4]; if (f[4] > 0) o.mm[f[3]] = 1; }
+        else if (f[2] === IDX.priorYear) o.y1 += f[4];
+      });
+      var list = Object.keys(cu).map(function(k){ var o = cu[k]; o.nCur = Object.keys(o.mm).length; return o; })
+        .sort(function(a, b){ return (a.y2 - a.y1) - (b.y2 - b.y1); });
+      detail = '<div class="dl-box"><p class="dl-cap">' + esc(x.name) + '｜' + worst.label +
+               '（' + list.length + ' 家，依「較去年增減」由差到好排序）</p>' + detailTable(list) + '</div>';
+    }
+    return '<div class="pv-item">' +
+      '<div class="pv-head"><span class="pv-name">' + esc(x.name) + '</span>' +
+        '<span class="tag ' + x.cat.toLowerCase() + '">' + x.cat + '</span>' +
+        '<span class="pv-stat">達成 <b class="' + (x.st.achievement >= 1 ? 'up' : 'down') + '">' + pct(x.st.achievement, 0) + '</b>' +
+        (x.gap ? '　缺口 <b class="down">' + compact(x.gap) + '</b>' : '') +
+        '　YoY <b class="' + (x.st.yoy >= 0 ? 'up' : 'down') + '">' + pctSigned(x.st.yoy) + '</b></span></div>' +
+      '<div class="pv-rows">' + chanRows + '</div>' +
+      (worst && worst.diff < 0
+        ? '<p class="pv-note">主要掉在 <b>' + worst.label + '</b>，較去年少 <b class="down">' + compact(-worst.diff) + '</b>。' +
+          expandBtn(key, '看這個通路的客戶明細', '收合明細') + '</p>'
+        : '<p class="pv-note">各通路都沒有明顯衰退，缺口主要來自目標訂得比去年高。</p>') +
+      detail +
+    '</div>';
+  }).join('');
+
+  cards.push({
+    key:'review', tone:'risk', chip:'① 業績評估',
+    title: probs.length + ' 個品項落後或衰退，合計影響 ' + compact(probs.reduce(function(a,x){ return a + x.score; }, 0)),
+    read: '先看「哪個品項」出問題，再往下看「問題出在哪個通路」。以下依影響金額排序，只列前 ' + top.length + ' 個。',
+    body: body
+  });
+  return { cards:cards, base:B };
+}
+
+/* ==========================================================================
+   客戶風險：斷單、頻率下降、衰退、流失合併成一張清單
+   ========================================================================== */
+function riskCard(B){
+  var m = B.m, rows = B.rows;
+  var tag = {};
+  function mark(c, t){ (tag[c.ci] = tag[c.ci] || { c:c, why:[] }).why.push(t); }
+  rows.forEach(function(c){
+    if (c.y2 === 0 && c.y1 > 0) mark(c, '今年掛零');
+    else if (c.last > 0 && c.last <= m - 2) mark(c, '已 ' + (m - c.last) + ' 個月沒下單');
+    if (c.nPri - c.nCur >= 2 && c.y1 > 0) mark(c, '下單月數 ' + c.nPri + '→' + c.nCur);
+    if (c.y1 > 0 && c.y2 > 0 && c.growth != null && c.growth <= -0.2) mark(c, '衰退 ' + pctSigned(c.growth));
+  });
+  var list = Object.keys(tag).map(function(k){
+    var o = tag[k]; o.c.why = o.why.join('、'); o.c.risk = Math.max(o.c.y1 - o.c.y2, 0) + o.c.y2 * 0.2;
+    return o.c;
+  }).sort(function(a, b){ return b.risk - a.risk; });
+  if (!list.length) return null;
+  var atRisk = list.reduce(function(a, c){ return a + Math.max(c.y1 - c.y2, 0); }, 0);
+  var show = state.insExpand['risk'] ? list : list.slice(0, 8);
+  return {
+    key:'risk', tone:'risk', chip:'② 客戶風險',
+    title: list.length + ' 家客戶出現預警訊號，較去年已少了 ' + compact(atRisk),
+    read: '把斷單、下單頻率下降、衰退、今年掛零合併成同一份清單，依「流失金額」排序。',
+    body: '<div class="dl-wrap"><table class="dl-table"><thead><tr>' +
+        '<th class="num">#</th><th>客戶名稱</th><th>通路</th><th>訊號</th><th class="num">去年</th><th class="num">今年</th>' +
+      '</tr></thead><tbody>' + show.map(function(c, i){
+        return '<tr><td class="num">' + (i+1) + '</td><td>' + insLink(c.name, 'cust', c.name) + '</td>' +
+          '<td>' + (CHANNEL_SHORT[c.channel] || c.channel) + '</td>' +
+          '<td class="why">' + esc(c.why) + '</td>' +
+          '<td class="num">' + compact(c.y1) + '</td><td class="num">' + compact(c.y2) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (list.length > 8 ? '<p class="pv-note">' + expandBtn('risk', '顯示全部 ' + list.length + ' 家', '只顯示前 8 家') + '</p>' : '')
+  };
+}
+
+/* ==========================================================================
+   重點品項開發缺口：目標通路裡還沒進貨的客戶
+   ========================================================================== */
+function gapCard(B){
+  var m = B.m, pool = B.pool;
+  var focus = pool.filter(function(p){
+    var nm = normName(p.name);
+    return MDPF_RE.test(nm) || (p.category === 'GE' && GE_FOCUS_RE.test(nm));
+  });
+  if (!focus.length) return null;
+  var byC = {}; B.rows.forEach(function(c){ byC[c.ci] = c; });
+  var blocks = focus.map(function(p){
+    var adoptByChan = {}, allByChan = {};
+    B.rows.forEach(function(c){
+      allByChan[c.channel] = (allByChan[c.channel] || 0) + 1;
+      if ((c.pc[p.i] || 0) > 0) adoptByChan[c.channel] = (adoptByChan[c.channel] || 0) + 1;
+    });
+    var tg = targetsFor(p.name, adoptByChan);
+    var pool2 = B.rows.filter(function(c){ return tg.indexOf(c.channel) >= 0; });
+    var miss = pool2.filter(function(c){ return !(c.pc[p.i] > 0); }).sort(function(a, b){ return b.y2 - a.y2; });
+    var got = pool2.length - miss.length;
+    var key = 'gap-' + p.i;
+    return { p:p, tg:tg, got:got, all:pool2.length, miss:miss, key:key, adoptByChan:adoptByChan, allByChan:allByChan };
+  }).sort(function(a, b){ return b.miss.length - a.miss.length; });
+
+  var body = blocks.map(function(b){
+    var chanTxt = b.tg.map(function(id){
+      var lb = (CHAN_ORDER.filter(function(g){ return g[0] === id; })[0] || [id, id])[1];
+      return lb + ' ' + (b.adoptByChan[id] || 0) + '/' + (b.allByChan[id] || 0);
+    }).join('　');
+    return '<div class="pv-item">' +
+      '<div class="pv-head"><span class="pv-name">' + esc(b.p.name) + '</span>' +
+        '<span class="tag ' + b.p.category.toLowerCase() + '">' + b.p.category + '</span>' +
+        '<span class="pv-stat">目標通路已開發 <b>' + b.got + ' / ' + b.all + '</b> 家</span></div>' +
+      '<p class="pv-note">' + chanTxt + '　' +
+        (b.miss.length ? '尚未開發 <b>' + b.miss.length + '</b> 家　' + expandBtn(b.key, '展開名單', '收合名單') : '目標通路已全部開發') +
+      '</p>' +
+      (state.insExpand[b.key]
+        ? '<div class="dl-box"><p class="dl-cap">' + esc(b.p.name) + '｜尚未進貨的 ' + b.miss.length +
+          ' 家（依今年整體業績排序，可逐一核對）</p>' + detailTable(b.miss) + '</div>'
+        : '') +
+    '</div>';
+  }).join('');
+
+  var worst = blocks[0];
+  return { key:'gapdev', tone:'opp', chip:'③ 重點品項開發缺口',
+    title: blocks.length + ' 個重點品項的目標通路開發進度' +
+           (worst ? '；缺口最大的是 ' + worst.p.name + '，還有 ' + worst.miss.length + ' 家沒進貨' : ''),
+    read:'只算「目標通路」——沒有在推的通路不列入分母，數字才不會被稀釋。每一項都可以展開逐家核對。',
+    body: body };
+}
+
+/** 三塊整併後的分析 */
+function buildInsights(){
+  var r = reviewCards(), B = r.base, cards = r.cards;
+  var rk = riskCard(B); if (rk) cards.push(rk);
+  var gp = gapCard(B);  if (gp) cards.push(gp);
+  return cards;
+}
+
+/* -------------------- 重點追蹤：今年只盯這兩個數字 --------------------
+   （版面留著，明年目標換了再換成別的指標即可） */
+function focusCards(){
+  var m = state.setMonth, out = [];
+  var pool = productPool();
+  var mdpfIds = pool.filter(function(p){ return MDPF_RE.test(normName(p.name)); }).map(function(p){ return p.i; });
+
+  var byC = {};
+  var mset = {}; mdpfIds.forEach(function(i){ mset[i] = 1; });
+  var pset = {}; pool.forEach(function(p){ pset[p.i] = 1; });
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[3] > m) return;
+    var c = byC[f[0]] || (byC[f[0]] = { y1:0, y1f:0, y2:0, first:0, mm:{} });
+    if (f[2] === IDX.curYear){
+      c.y2 += f[4];
+      if (f[4] > 0){                                   // 有下單的月份、首次進貨只認正數
+        c.mm[f[3]] = 1;
+        if (mset[f[1]] && (!c.first || f[3] < c.first)) c.first = f[3];
+      }
+    } else if (f[2] === IDX.priorYear) c.y1 += f[4];
+  });
+  // 「是不是新客戶」要看去年一整年（1–12 月），不能只看 1–設定月：
+  // 有些客戶去年是下半年才下單，只比對 1–8 月會把他們誤判成今年的新客戶。
+  DATA.facts.forEach(function(f){
+    if (!pset[f[1]] || f[2] !== IDX.priorYear) return;
+    var c = byC[f[0]]; if (c) c.y1f += f[4];
+  });
+  var priorMonths = {};
+  DATA.facts.forEach(function(f){ if (f[2] === IDX.priorYear && f[4] > 0) priorMonths[f[3]] = 1; });
+  var priorCoverage = Object.keys(priorMonths).length;
+  var cis = Object.keys(byC).map(Number);
+  function chanOf(ci){ var c = IDX.customers[ci]; return c ? c.channel : 'Other'; }
+  function row(ci){
+    var c = IDX.customers[ci], o = byC[ci];
+    return { name: c ? c.name : '—', channel: chanOf(ci), y1:o.y1, y1f:o.y1f, y2:o.y2, nCur:Object.keys(o.mm).length };
+  }
+
+  /* ---------- ① MDPF：只看目標通路 ---------- */
+  if (mdpfIds.length){
+    var adoptByChan = {}, allByChan = {};
+    cis.forEach(function(ci){
+      var ch = chanOf(ci);
+      allByChan[ch] = (allByChan[ch] || 0) + 1;
+      if (byC[ci].first > 0) adoptByChan[ch] = (adoptByChan[ch] || 0) + 1;
+    });
+    var tg = targetsFor('MDPF', adoptByChan);
+    var inTarget = cis.filter(function(ci){ return tg.indexOf(chanOf(ci)) >= 0; });
+    var adopters = inTarget.filter(function(ci){ return byC[ci].first > 0; });
+    var missing = inTarget.filter(function(ci){ return !byC[ci].first; });
+    var rows = CHAN_ORDER.filter(function(g){ return tg.indexOf(g[0]) >= 0 && (allByChan[g[0]] || 0) > 0; })
+      .map(function(g){
+        var got = adoptByChan[g[0]] || 0, all = allByChan[g[0]] || 0;
+        return { k:g[1], v: got + ' / ' + all + ' 家', w: all ? got / all * 100 : 0, hl: got > 0 };
+      });
+    var firstBy = {};
+    adopters.forEach(function(ci){ var f = byC[ci].first; firstBy[f] = (firstBy[f] || 0) + 1; });
+    var mons = Object.keys(firstBy).map(Number).sort(function(a,b){ return a-b; });
+    var peak = mons.reduce(function(a,x){ return (firstBy[x] > (firstBy[a]||0)) ? x : a; }, mons[0] || 0);
+    var newThis = firstBy[m] || 0;
+    out.push({
+      key:'f-mdpf', warn: newThis <= 1, cfgKey:'MDPF', tg:tg, adoptByChan:adoptByChan, allByChan:allByChan,
+      label:'① MDPF 進貨診所數（目標通路累計）',
+      num: adopters.length, unit:'家',
+      sub: '目標通路共 ' + inTarget.length + ' 家有交易客戶，滲透率 ' + pct(inTarget.length ? adopters.length / inTarget.length : 0, 1) +
+           '；MDPF 今年累計 ' + compact(periodStats(mdpfIds, 1, m).actual),
+      rows: rows,
+      read: (mons.length
+        ? '首次進貨集中在 <b>' + peak + ' 月</b>（' + firstBy[peak] + ' 家）；第 ' + m + ' 月新增 <b class="' +
+          (newThis <= 1 ? 'down' : 'up') + '">' + newThis + ' 家</b>' +
+          (newThis <= 1 ? '，鋪點速度明顯放緩。' : '，仍在持續開發。')
+        : '目前還沒有客戶進過 MDPF。'),
+      expand: { key:'f-mdpf-miss', label:'尚未進貨 ' + missing.length + ' 家', shut:'收合名單',
+                cap:'MDPF｜目標通路中尚未進貨的 ' + missing.length + ' 家（依今年整體業績排序）',
+                rows: missing.map(row).sort(function(a,b){ return b.y2 - a.y2; }) },
+      expand2:{ key:'f-mdpf-got', label:'已進貨 ' + adopters.length + ' 家', shut:'收合名單',
+                cap:'MDPF｜已進貨的 ' + adopters.length + ' 家',
+                rows: adopters.map(row).sort(function(a,b){ return b.y2 - a.y2; }) }
+    });
+  }
+
+  /* ---------- ② 新開發藥局數 ---------- */
+  var phAll = cis.filter(function(ci){ var c = chanOf(ci); return (c === 'Independent' || c === 'Chain') && byC[ci].y2 > 0; });
+  var phNew = phAll.filter(function(ci){ return byC[ci].y1f === 0 && byC[ci].y2 > 0; });
+  var lateLastYear = phAll.filter(function(ci){ return byC[ci].y1 === 0 && byC[ci].y1f > 0 && byC[ci].y2 > 0; });
+  var newAmt = phNew.reduce(function(a, ci){ return a + byC[ci].y2; }, 0);
+  var phAmt = phAll.reduce(function(a, ci){ return a + byC[ci].y2; }, 0);
+  var once = phNew.filter(function(ci){ return Object.keys(byC[ci].mm).length <= 2; }).length;
+  out.push({
+    key:'f-newph', warn: priorCoverage < 12,
+    label:'② 新開發藥局數（去年整年都沒下單）',
+    num: phNew.length, unit:'家',
+    sub: '藥局通路共 ' + phAll.length + ' 家有交易；新客戶今年做出 ' + compact(newAmt) +
+         '，佔藥局通路 ' + pct(phAmt ? newAmt / phAmt : 0, 1),
+    rows: phNew.sort(function(a, b){ return byC[b].y2 - byC[a].y2; }).slice(0, 4).map(function(ci){
+      var c = IDX.customers[ci];
+      return { k: c ? c.name : '—', v: compact(byC[ci].y2), w: newAmt ? byC[ci].y2 / newAmt * 100 : 0, hl:true };
+    }),
+    read: (phNew.length
+      ? '平均每家 <b>' + compact(newAmt / phNew.length) + '</b>；其中 <b class="' + (once ? 'down' : 'up') + '">' + once +
+        ' 家</b>今年只進貨 1–2 個月，最需要回訪固化。'
+      : '今年還沒有新開發的藥局。') +
+      (lateLastYear.length
+        ? ' 另有 <b>' + lateLastYear.length + ' 家</b>去年 1–' + m + ' 月沒下單、但去年下半年有，屬於<b>回流客</b>不是新客戶，已排除。'
+        : '') +
+      (priorCoverage < 12
+        ? ' <b class="down">注意：目前手上的去年資料只有 ' + priorCoverage + ' 個月</b>，' +
+          '要判斷「去年整年都沒下單」需要去年 1–12 月完整資料，請補上再看這個數字。'
+        : ''),
+    expand: { key:'f-newph-all', label:'展開全部 ' + phNew.length + ' 家', shut:'收合名單',
+              cap:'今年新開發藥局 ' + phNew.length + ' 家（去年 1–12 月完全沒下單、今年有進貨）',
+              extra: { head:'去年全年', get:function(r){ return compact(r.y1f); } },
+              rows: phNew.map(row).sort(function(a,b){ return b.y2 - a.y2; }) },
+    expand2: lateLastYear.length
+      ? { key:'f-newph-back', label:'回流客 ' + lateLastYear.length + ' 家', shut:'收合名單',
+          cap:'回流客 ' + lateLastYear.length + ' 家（去年 1–' + m + ' 月沒下單，但去年下半年有；不算新開發）',
+          extra: { head:'去年全年', get:function(r){ return compact(r.y1f); } },
+          rows: lateLastYear.map(row).sort(function(a,b){ return b.y2 - a.y2; }) }
+      : null
+  });
+  return out;
+}
+
+function focusExpandHtml(ex){
+  if (!ex || !ex.rows) return '';
+  return state.insExpand[ex.key]
+    ? '<div class="dl-box"><p class="dl-cap">' + esc(ex.cap) + '</p>' + detailTable(ex.rows, ex.extra) + '</div>' : '';
+}
+
+function renderFocus(){
+  var cards = [];
+  try { cards = focusCards(); } catch(e){ console.error('focus failed', e); }
+  document.getElementById('focusGrid').innerHTML = cards.map(function(c){
+    var cfg = '';
+    if (c.cfgKey){
+      cfg = '<div class="tg-row"><span class="tg-lab">目標通路</span>' +
+        CHAN_ORDER.filter(function(g){ return (c.allByChan[g[0]] || 0) > 0; }).map(function(g){
+          var on = c.tg.indexOf(g[0]) >= 0;
+          return '<button type="button" class="tg-btn' + (on ? ' on' : '') + '" data-tg="' + c.cfgKey +
+                 '" data-ch="' + g[0] + '">' + g[1] + '</button>';
+        }).join('') + '<span class="tg-note">沒在推的通路取消勾選，就不會列入分母</span></div>';
+    }
+    return '<div class="focus-card' + (c.warn ? ' warn' : '') + '">' +
+      '<div class="focus-label">' + esc(c.label) + '</div>' +
+      '<div class="focus-big"><span class="focus-num">' + c.num + '</span><span class="focus-unit">' + c.unit + '</span></div>' +
+      '<div class="focus-sub">' + c.sub + '</div>' +
+      (c.rows.length ? '<div class="focus-rows">' + c.rows.map(function(r){
+        return '<div class="focus-row"><span class="fr-k">' + esc(r.k) + '</span>' +
+          '<span class="fr-bar"><i style="width:' + Math.min(r.w, 100).toFixed(0) + '%' +
+            (r.hl ? '' : ';background:var(--border-strong)') + '"></i></span>' +
+          '<span class="fr-v">' + esc(r.v) + '</span></div>';
+      }).join('') + '</div>' : '') +
+      cfg +
+      '<p class="focus-read">' + c.read + '</p>' +
+      '<div class="focus-acts">' +
+        (c.expand  ? expandBtn(c.expand.key,  c.expand.label,  c.expand.shut)  : '') +
+        (c.expand2 ? expandBtn(c.expand2.key, c.expand2.label, c.expand2.shut) : '') +
+      '</div>' +
+      focusExpandHtml(c.expand) + focusExpandHtml(c.expand2) +
+    '</div>';
+  }).join('');
+}
+
+function renderInsights(){
+  var body = document.getElementById('insightBody');
+  var tg = document.getElementById('insightToggle');
+  tg.textContent = state.insOpen ? '收合 ▴' : '展開 ▾';
+  tg.onclick = function(){ state.insOpen = !state.insOpen; renderInsights(); };
+  body.hidden = !state.insOpen;
+  document.getElementById('insightHint').textContent = '範圍：' + scopeLabel();
+  if (!state.insOpen) return;
+
+  renderFocus();
+
+  var cards = [];
+  try { cards = buildInsights(); } catch(e){ console.error('insight failed', e); }
+  var more = document.getElementById('insightMore');
+  more.textContent = state.insMore ? '收起深入分析 ▴' : '深入分析（' + cards.length + ' 塊）▾';
+  more.onclick = function(){ state.insMore = !state.insMore; renderInsights(); };
+  var el = document.getElementById('insightGrid');
+  el.hidden = !state.insMore;
+  if (!state.insMore){ el.innerHTML = ''; wireInsightActions(); return; }
+
+  el.innerHTML = cards.map(function(c){
+    return '<div class="ins-card wide ' + (c.tone || 'strat') + '">' +
+      '<div class="ins-top"><span class="ins-chip">' + esc(c.chip) + '</span></div>' +
+      '<div class="ins-title">' + c.title + '</div>' +
+      '<p class="ins-read">' + c.read + '</p>' + (c.body || '') +
+    '</div>';
+  }).join('');
+  wireInsightActions();
+}
+
+/** 客戶連結、品項連結、展開鈕、目標通路勾選，統一在這裡綁 */
+function wireInsightActions(){
+  var scope = document.getElementById('insightBlock');
+  Array.prototype.forEach.call(scope.querySelectorAll('.ins-link'), function(b){
+    b.addEventListener('click', function(){
+      var act = b.getAttribute('data-act'), val = b.getAttribute('data-val');
+      if (act === 'cust'){
+        state.custSearch = val; state.tagFilter = null; state.openCustomer = null;
+        render();
+        var box = document.getElementById('custSearch'); if (box) box.value = val;
+        scrollToBlock(document.getElementById('custTableBody').closest('section.block'));
+      } else if (act === 'sku'){
+        state.skus = val.split(',').map(Number).filter(function(i){ return IDX.products[i]; });
+        state.category = 'ALL'; state.subcats = {}; state.leafs = {}; state.openCustomer = null;
+        render(); scrollToBlock(document.getElementById('insightBlock'));
+      }
+    });
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll('[data-exp]'), function(b){
+    b.addEventListener('click', function(){
+      var k = b.getAttribute('data-exp');
+      state.insExpand[k] = !state.insExpand[k];
+      renderInsights();
+    });
+  });
+  Array.prototype.forEach.call(scope.querySelectorAll('[data-tg]'), function(b){
+    b.addEventListener('click', function(){
+      var key = b.getAttribute('data-tg'), ch = b.getAttribute('data-ch');
+      var cur = (FOCUS_CFG[key] && FOCUS_CFG[key].length) ? FOCUS_CFG[key].slice()
+              : Array.prototype.map.call(scope.querySelectorAll('[data-tg="' + key + '"].on'), function(x){ return x.getAttribute('data-ch'); });
+      var i = cur.indexOf(ch);
+      if (i >= 0) cur.splice(i, 1); else cur.push(ch);
+      if (!cur.length) return;                       // 至少要留一個通路
+      FOCUS_CFG[key] = cur; saveFocusCfg(); renderInsights();
+    });
+  });
+}
+
 function renderSourceBar(){
   var demo = DATA.kind === 'demo';
   document.getElementById('sourceBar').classList.toggle('is-loaded', !demo);
@@ -2918,6 +3686,7 @@ function render(){
   safe(renderSkuPicker, 'skuPicker');
   safe(renderKPIs, 'kpis');
   safe(renderCharts, 'charts');
+  safe(renderInsights, 'insights');
   safe(renderGapTable, 'gapTable');
   safe(renderCustomers, 'customers');
   safe(renderMergeCheck, 'mergeCheck');
@@ -2966,12 +3735,51 @@ async function handleFiles(files){
   if (!files || !files.length) return;
   status('讀取檔案中…');
   try {
-    var ds = await buildDatasetFromFiles(Array.prototype.slice.call(files), function(m){ status(m); });
+    var fresh = await buildDatasetFromFiles(Array.prototype.slice.call(files), function(m){ status(m); });
+    var replaceAll = !!(document.getElementById('replaceAll') || {}).checked;
+    var hasOld = DATA && DATA.kind === 'uploaded' && DATA.facts && DATA.facts.length;
+    // 月中先傳過一次、月底再傳完整版是正常的（該月會整個換新，不會累加）。
+    // 但反過來——完整版之後又傳了月中的部分檔——那個月就會縮水，這裡先算出來提醒。
+    var shrink = [];
+    if (hasOld && !replaceAll){
+      var oldT = monthTotals(DATA), newT = monthTotals(fresh);
+      Object.keys(newT).forEach(function(k){
+        if (oldT[k] > 0 && newT[k] < oldT[k] * 0.7){
+          shrink.push({ k:k, before:oldT[k], after:newT[k] });
+        }
+      });
+    }
+    var ds = (hasOld && !replaceAll) ? mergeDatasets(DATA, fresh) : fresh;
+
     setData(ds, false);
     var saved = persist(ds);
-    status('已更新：' + ds.sources.map(function(s){
-             return s.sheet + ' ' + nf.format(s.rows) + (s.kind === 'target' ? ' 個月目標' : (s.scanned ? ' / ' + nf.format(s.scanned) + ' 筆（略過金額為 0 的退貨、贈品列）' : ' 筆'));
-           }).join('；') + (saved ? '。已記在這台電腦的瀏覽器，下次打開同一個連結會自動帶出來。' : '。（瀏覽器無法儲存，關掉頁面後需要重新上傳）'), 'ok');
+    var read = fresh.sources.map(function(s){
+      return s.sheet + ' ' + nf.format(s.rows) +
+             (s.kind === 'target' ? ' 個月目標'
+                                  : (s.scanned ? ' / ' + nf.format(s.scanned) + ' 筆（略過金額為 0 的退貨、贈品列）' : ' 筆'));
+    }).join('；');
+    var months = coveredMonths(ds);
+    var msg;
+    if (hasOld && !replaceAll){
+      var touched = (ds.mergedMonths || []).map(function(k){
+        var q = k.split('-'); return q[0] + '/' + String(q[1]).padStart(2,'0');
+      });
+      msg = '已讀取：' + read + '。這次的檔案涵蓋 ' + (touched.join('、') || '（無）') +
+            '，' + (touched.length ? '該月份的資料已整個換成新的' : '沒有可用月份') +
+            '，其餘月份沿用先前上傳的內容；目前手上共 ' + months.length + ' 個月的資料（' +
+            (months[0] || '') + ' ～ ' + (months[months.length-1] || '') + '）。';
+    } else {
+      msg = '已更新：' + read + '，共 ' + months.length + ' 個月的資料。';
+    }
+    if (shrink.length){
+      msg += '⚠ 注意：' + shrink.map(function(x){
+        var q = x.k.split('-');
+        return q[0] + '/' + q[1] + ' 從 ' + compact(x.before) + ' 變成 ' + compact(x.after);
+      }).join('、') + '。這通常表示上傳的是「月中的部分檔」而不是完整檔；' +
+      '如果不是故意的，請改用該月的完整檔再上傳一次（會整個換新，不會重複計算）。';
+    }
+    status(msg + (saved ? '已記在這台電腦的瀏覽器，下次打開同一個連結會自動帶出來。'
+                        : '（瀏覽器無法儲存，關掉頁面後需要重新上傳）'), shrink.length ? 'warn' : 'ok');
   } catch(e){
     console.error(e);
     status('讀取失敗：' + (e && e.message ? e.message : e), 'error');
@@ -3010,6 +3818,7 @@ window.addEventListener('resize', function(){
 
 // 先用示範資料把畫面畫出來（頁面一打開就是可用狀態），再換成這台電腦上存過的資料
 TAGS = loadTags();          // 客戶標註：與資料分開存，重新上傳不會被蓋掉
+FOCUS_CFG = loadFocusCfg(); // 重點品項的目標通路設定，同樣與資料分開存
 var stored = loadStored();
 setData(stored || buildDemoDataset(), false);
 wireUpload();
