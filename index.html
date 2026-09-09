@@ -1519,7 +1519,7 @@ function ingestProductMonthlySheet(rows, col, curYear){
     if (m >= 1 && m <= 12) monthCols.push([c, m]);
   }
   if (monthCols.length < 6) return 0;
-  var n = 0, hasSales = col.products.length > 0;
+  var n = 0;
   for (var i = hdrRow + 1; i < rows.length; i++){
     var row = rows[i] || [];
     var name = String(row[0] || '').trim();
@@ -1529,7 +1529,7 @@ function ingestProductMonthlySheet(rows, col, curYear){
     // 小計列，Source 欄一樣寫 DED/GE，照單全收會讓目標被重複加 2~3 倍（達成率被稀釋成 1/3）。
     var pi = col.findPi(name);
     if (pi < 0){
-      if (hasSales || AGG_ROW_RE.test(name)) continue;
+      if (AGG_ROW_RE.test(name) || name.length < 3) continue;
       pi = col.pi(name, src);
     }
     monthCols.forEach(function(mc){
@@ -1545,13 +1545,53 @@ function ingestProductMonthlySheet(rows, col, curYear){
 /** 這一列是不是彙總列（DED ALL / NVS ALL / Priority 1… / ALL / 小計 等），不是真正的品項 */
 var AGG_ROW_RE = /(^|\s)(all|total|subtotal|priority\s*\d*)(\s|$)|合計|總計|小計|全部/i;
 
+/** 這張分頁看起來像不像目標表？分頁叫什麼名字都沒關係，看內容認：
+      ① 前 12 列裡有一列出現 6 個以上「202601」這種六位數月份標題（Target&Sales 那種矩陣表）
+      ② 或是有 Product / Source 並排的標題列（儀表板檔的 Product_Monthly）           */
+function hasTargetLabel(rows){
+  for (var r = 0; r < Math.min(rows.length, 12); r++){
+    var row = rows[r] || [];
+    for (var i = 0; i < row.length; i++){
+      if (/target|目標/i.test(String(row[i] == null ? '' : row[i]))) return true;
+    }
+  }
+  return false;
+}
+function monthHeaderRow(rows){
+  var best = { row:-1, cols:[] };
+  for (var r = 0; r < Math.min(rows.length, 12); r++){
+    var row = rows[r] || [], hits = [];
+    for (var i = 0; i < row.length; i++){
+      var v = String(row[i] == null ? '' : row[i]).trim();
+      var yy = +v.slice(0,4), mo = +v.slice(4);
+      if (/^\d{6}$/.test(v) && mo >= 1 && mo <= 12 && yy >= 2000 && yy <= 2099) hits.push([i, v]);
+    }
+    if (hits.length > best.cols.length) best = { row:r, cols:hits };
+  }
+  return best;
+}
+function looksLikeTargetSheet(rows){
+  for (var r = 0; r < Math.min(rows.length, 12); r++){
+    var row = rows[r] || [];
+    var a = String(row[0] == null ? '' : row[0]).trim().toLowerCase();
+    var b = String(row[1] == null ? '' : row[1]).trim().toLowerCase();
+    if (a === 'product' && b === 'source') return true;
+  }
+  var h = monthHeaderRow(rows);
+  // 整年份的目標表一看就認得；只有一季（3~5 個月）的，要再看到 Target／目標 字樣才算，
+  // 免得把其他有月份欄位的分頁誤判成目標表。
+  if (h.cols.length >= 6) return true;
+  if (h.cols.length >= 2 && hasTargetLabel(rows)) return true;
+  return false;
+}
+
 /** Target&Sales 矩陣表：找出 202601… 月份標題列，取「Target」區塊的每月目標。 */
 function ingestTargetSheet(rows, col){
+  var best = monthHeaderRow(rows);
   var hdrRow = -1, monthCols = [];
-  for (var r = 0; r < Math.min(rows.length, 12); r++){
-    var hits = [];
-    (rows[r] || []).forEach(function(v, i){ if (/^\d{6}$/.test(String(v||'').trim())) hits.push([i, String(v).trim()]); });
-    if (hits.length >= 6){ hdrRow = r; monthCols = hits; break; }
+  // 整年 12 個月的目標表，或只有一季（含 Target／目標 字樣）的都收
+  if (best.cols.length >= 6 || (best.cols.length >= 2 && hasTargetLabel(rows))){
+    hdrRow = best.row; monthCols = best.cols;
   }
   if (hdrRow < 0) return 0;
   // 標題列下一列標出區塊：含 "Target" 的欄位起算為目標區，含 "Sales" 的為去年實績區
@@ -1567,7 +1607,6 @@ function ingestTargetSheet(rows, col){
   });
   if (!targetCols.length) return 0;
   var n = 0, skippedAgg = 0;
-  var hasSales = col.products.length > 0;
   for (var i = hdrRow + 2; i < rows.length; i++){
     var row = rows[i] || [];
     var name = String(row[0] || '').trim();
@@ -1575,9 +1614,12 @@ function ingestTargetSheet(rows, col){
     // 目標表裡除了品項，還有 DED ALL / NVS ALL / Priority 1… / ALL 這些彙總列，
     // 如果照收會把目標重複加好幾遍（達成率會被稀釋成 1/3）。
     // 有銷售資料時：只認得出現在原始銷售資料裡的品項；沒有銷售資料時：用關鍵字排除彙總列。
+    // 彙總列（DED ALL、Priority 1…）一定要排掉，否則目標會被重複加好幾遍。
+    // 但「這次上傳的當月銷售剛好沒有這個品項」是正常的（例如第四季目標單獨上傳），
+    // 這種就要照樣建立品項，合併時會依名稱對回既有資料。
     var pi = col.findPi(name);
     if (pi < 0){
-      if (hasSales || AGG_ROW_RE.test(name)){ skippedAgg++; continue; }
+      if (AGG_ROW_RE.test(name) || name.length < 3){ skippedAgg++; continue; }
       pi = col.pi(name, /SYSTANE|TEARS|DURATEARS/i.test(name) ? 'DED' : 'GE');
     }
     targetCols.forEach(function(mc){
@@ -1613,35 +1655,43 @@ async function buildDatasetFromFiles(files, onProgress){
     var wb = await readWorkbook(file, onProgress);
     var matched = 0;
     // 先用分頁名稱找（主檔的 DED資料／GE資料／Target），找不到再看表頭認原始月報
-    var named = wb.sheetNames.filter(function(x){
+    // 先掃「名字看得出來」的分頁（主檔的 DED資料／GE資料／Target&Sales／Product_Monthly），
+    // 大型儀表板檔就不用整本解壓縮；但只要銷售或目標其中一邊沒抓到，就把其餘分頁也掃一遍，
+    // 讓「工作表1／工作表2／工作表3」這種公司原始檔一樣認得出來。
+    function isNamedSheet(x){
       return /^(DED資料|GE資料)$/.test(x) || /target/i.test(x) || x === 'Product_Monthly';
-    });
-    var scanList = named.length ? named : wb.sheetNames;
-    for (var s = 0; s < scanList.length; s++){
-      var sname = scanList[s];
-      // 目標可能來自：Monthly Report 的「Target&Sales」，或儀表板檔的「Product_Monthly」
-      var isTarget = /target/i.test(sname) || sname === 'Product_Monthly';
-      if (isTarget){
-        var trows = [];
-        await wb.readSheet(sname, function(cells){ trows.push(cells); });
-        pendingTargets.push({ name:file.name, sheet:sname, rows:trows });
-        matched++;
-        continue;
-      }
-      var header = null, buffered = [];
-      await wb.readSheet(sname, function(cells, rowNo){
-        if (rowNo === 1){ header = cells; return; }
-        buffered.push(cells);
-      });
-      if (!header) continue;
+    }
+    var named = wb.sheetNames.filter(isNamedSheet);
+    var others = wb.sheetNames.filter(function(x){ return !isNamedSheet(x); });
+    var gotSales = 0, gotTarget = 0;
+
+    async function scanSheet(sname){
+      var rowsAll = [];
+      await wb.readSheet(sname, function(cells){ rowsAll.push(cells); });
+      if (!rowsAll.length) return;
+      var header = rowsAll[0];
       var k = detectSheetKind(header) ||
               (sname === 'DED資料' ? 'DED' : sname === 'GE資料' ? 'GE' : null);
-      if (!k) continue;              // 看表頭都認不出來的分頁就跳過（不是原始資料）
-      var r2 = ingestSalesRows(k, header, function(cb){ buffered.forEach(cb); }, col);
-      sources.push({ name:file.name, sheet:sname, rows:r2.used, scanned:r2.scanned });
-      totalUsed += r2.used; matched++;
+      if (k){
+        var body = rowsAll.slice(1);
+        var r2 = ingestSalesRows(k, header, function(cb){ body.forEach(cb); }, col);
+        sources.push({ name:file.name, sheet:sname, rows:r2.used, scanned:r2.scanned });
+        totalUsed += r2.used; matched++; gotSales++;
+        return;
+      }
+      if (/target/i.test(sname) || sname === 'Product_Monthly' || looksLikeTargetSheet(rowsAll)){
+        pendingTargets.push({ name:file.name, sheet:sname, rows:rowsAll });
+        matched++; gotTarget++;
+      }
     }
-    if (!matched) throw new Error('「' + file.name + '」裡找不到 DED資料 / GE資料 / Target&Sales 這幾張表');
+
+    for (var s = 0; s < named.length; s++) await scanSheet(named[s]);
+    // 只有兩種情況才多掃其他分頁：完全沒抓到銷售資料，或這是分頁很少的公司原始檔。
+    // 主檔那種十幾個分頁的活頁簿不再全掃，免得把產品清單／Forecast 誤認成目標表。
+    if ((!gotSales || others.length <= 4) && others.length){
+      for (var s2 = 0; s2 < others.length; s2++) await scanSheet(others[s2]);
+    }
+    if (!matched) throw new Error('「' + file.name + '」裡找不到可用的資料表（需要 DED／GE 原始資料，或含月份標題的目標表）');
   }
 
   // 目標表最後才處理：這時候品項清單已經由銷售明細建立好，才對得起來、也才能排掉彙總列
@@ -1701,17 +1751,26 @@ function mergeDatasets(oldDs, newDs){
   });
 
   // 目標：新檔有帶目標就用新的，否則沿用舊的（都以品項名稱對應，索引會變）
-  function carryTargets(ds){
-    var out = [];
+  // 目標也按「年-月」合併：新檔有給到的月份換新，沒給到的沿用舊的。
+  // 這樣第四季目標單獨上傳時，1–9 月原本的目標不會被洗掉。
+  var tTouched = {};
+  (newDs.targets || []).forEach(function(t){ tTouched[t[1] + '-' + t[2]] = 1; });
+  var tAgg = {};
+  function carryTargets(ds, keep){
+    if (!ds || !ds.targets) return;
     ds.targets.forEach(function(t){
+      if (!keep(t)) return;
       var p = ds.products[t[0]];
       if (!p) return;
-      out.push([ pid(p[0], p[1]), t[1], t[2], t[3] ]);
+      var k = pid(p[0], p[1]) + '|' + t[1] + '|' + t[2];
+      tAgg[k] = (tAgg[k] || 0) + t[3];
     });
-    return out;
   }
-  var targets = (newDs.targets && newDs.targets.length) ? carryTargets(newDs)
-              : (oldDs && oldDs.targets ? carryTargets(oldDs) : []);
+  carryTargets(newDs, function(){ return true; });
+  carryTargets(oldDs, function(t){ return !tTouched[t[1] + '-' + t[2]]; });
+  var targets = Object.keys(tAgg).map(function(k){
+    var q = k.split('|'); return [ +q[0], +q[1], +q[2], Math.round(tAgg[k]) ];
+  });
 
   var srcs = (newDs.sources || []).slice();
   (oldDs && oldDs.sources ? oldDs.sources : []).forEach(function(x){
