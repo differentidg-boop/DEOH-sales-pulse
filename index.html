@@ -108,6 +108,9 @@
   .upload-status.error{ color:var(--critical); }
   .upload-status.ok{ color:var(--good); }
   .upload-status.warn{ color:var(--watch); }
+  .need-requp{ display:inline-block; margin-top:6px; color:var(--watch); line-height:1.7; }
+  .need-requp b{ color:var(--watch); }
+  .tools-note{ font-size:11px; color:var(--watch); flex:1 1 100%; line-height:1.6; }
 
   /* ---------- sections ---------- */
   section.block{ margin-top:28px; }
@@ -753,6 +756,7 @@
             <button type="button" class="search-clear" id="custSearchClear" title="清除搜尋" hidden>✕</button>
           </div>
           <div class="pillset" id="tagFilterPills"></div>
+          <p class="tools-note" id="qtyNote" hidden></p>
         </div>
         <p class="callout" id="top20Callout"></p>
         <div class="table-scroll">
@@ -3139,6 +3143,14 @@ function renderCustTools(){
       clr.onclick = function(){ state.custSearch = ''; document.getElementById('custSearch').value = ''; renderCustomers(); }; }
   }
   // 標註篩選：預設四個 + 你自己加過的，括號是已標註幾家
+  var note = document.getElementById('qtyNote');
+  if (note){
+    var missing = DATA.kind === 'uploaded' && !IDX.hasQty;
+    note.hidden = !missing;
+    note.innerHTML = missing
+      ? '⚠ 目前這份資料沒有「數量」欄位（舊版存下來的），數量排序與缺口盒數需要把原始檔再上傳一次才會出現。'
+      : '';
+  }
   var counts = tagCounts(), el = document.getElementById('tagFilterPills');
   el.innerHTML = '';
   Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a] || (a < b ? -1 : 1); }).forEach(function(t){
@@ -3909,7 +3921,11 @@ function renderSourceBar(){
   document.getElementById('sourceDesc').innerHTML = demo
     ? '把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>，會自動找出 <code>DED資料</code>、<code>GE資料</code>、<code>Target&amp;Sales</code> 三張表，整份儀表板即時重算。檔案只在你自己的瀏覽器裡解析，不會上傳到任何地方。'
     : '最後更新：' + new Date(DATA.updatedAt).toLocaleString('zh-TW') +
-      '｜下個月只要再拖一次新的原始檔覆蓋即可。資料記在<b>這台電腦的瀏覽器</b>裡，同一個連結下次打開會自動帶出來；換電腦或清瀏覽器資料才需要重新上傳。';
+      '｜下個月只要再拖一次新的原始檔覆蓋即可。資料記在<b>這台電腦的瀏覽器</b>裡，同一個連結下次打開會自動帶出來；換電腦或清瀏覽器資料才需要重新上傳。' +
+      (IDX && !IDX.hasQty
+        ? '<br><span class="need-requp">⚠ 這份資料是舊版存下來的，<b>沒有「數量」欄位</b>，所以「數量排序」與「缺口盒數」暫時看不到。' +
+          '請把原始檔<b>再上傳一次</b>（同一份就可以，數字不會變），這兩個功能就會出現。</span>'
+        : '');
   document.getElementById('resetBtn').hidden = demo;
   document.getElementById('footNote').innerHTML =
     (demo
