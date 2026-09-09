@@ -1541,6 +1541,34 @@ function makeCollector(){
   };
 }
 
+/* 數量欄的位置備援：公司原始檔裡，DED資料 的數量固定在 Excel 的 AI 欄（第 35 欄，
+   0 起算 index 34），GE資料 固定在 N 欄（index 13）。抬頭如果被同事改名或整欄空白，
+   靠名稱就抓不到，數量排序與缺口盒數會整個消失。這時改用位置去抓，但不能盲抓：
+   1) 該位置不能已經被客戶／品項／金額等欄佔走；2) 抬頭不能明顯是別的東西（金額、名稱、
+   日期…）；3) 實際抽樣看那一欄是不是數字，過半是數字才採用。三關都過才算數量欄。 */
+var QTY_POS = { DED: 34, GE: 13 };
+var QTY_POS_BAD_RE = /(sales|amount|price|value|name|date|customer|item|discount|金額|名稱|日期|單價|客戶|品項|折讓)/i;
+function probeQtyCol(kind, h, idx, rowIter){
+  var c = QTY_POS[kind];
+  if (c == null) return -1;
+  var taken = [idx.cust, idx.prod, idx.amt, idx.chan, idx.mk, idx.year, idx.period, idx.date];
+  if (taken.indexOf(c) >= 0) return -1;
+  if (QTY_POS_BAD_RE.test(String(h[c] == null ? '' : h[c]))) return -1;
+  var seen = 0, num = 0;
+  try {
+    rowIter(function(row){
+      if (seen >= 300) return;
+      var a = parseFloat(String(row[idx.amt] != null ? row[idx.amt] : '').replace(/,/g, ''));
+      if (!isFinite(a) || a === 0) return;
+      seen++;
+      var q = parseFloat(String(row[c] != null ? row[c] : '').replace(/,/g, ''));
+      if (isFinite(q) && q !== 0) num++;
+    });
+  } catch (e){ return -1; }
+  if (seen < 5) return -1;
+  return num / seen >= 0.6 ? c : -1;
+}
+
 function ingestSalesRows(kind, header, rowIter, col){
   var h = tidyHeader(header);
   var idx;
@@ -1575,6 +1603,8 @@ function ingestSalesRows(kind, header, rowIter, col){
     };
   }
   if (idx.cust < 0 || idx.prod < 0 || idx.amt < 0) throw new Error('「' + kind + '」表缺少必要欄位（客戶／品項／金額）');
+  // 抬頭抓不到數量欄時，退回用固定欄位位置（DED＝AI 欄、GE＝N 欄）並驗證內容
+  if (idx.qty < 0) idx.qty = probeQtyCol(kind, h, idx, rowIter);
   var used = 0, skipped = 0, scanned = 0;
   rowIter(function(row){
     scanned++;
@@ -2071,11 +2101,15 @@ function customerRows(pids, setMonth, limit){
     qty:      function(a,b){ return b.q2 - a.q2 || b.y2 - a.y2; },
     qtyPrior: function(a,b){ return b.q1 - a.q1 || b.y1 - a.y1; }
   };
-  rows.sort(SORTS[state.custSort] || SORTS.current);
-  var total = rows.reduce(function(s,r){ return s + r.y2; }, 0) || 1;
+  rows.sort(SORTS[state.custSort] || SORTS.prior);
+  // 累計佔比要跟著目前的排序基準走：依去年排序時，累計的就是去年的佔比，
+  // 不然「前 N 家佔 80%」會跟名次對不起來。
+  var MET = { current:'y2', prior:'y1', qty:'q2', qtyPrior:'q1' };
+  var mk = MET[state.custSort] || 'y1';
+  var total = rows.reduce(function(s,r){ return s + (r[mk] || 0); }, 0) || 1;
   var run = 0;
   // 名次一律以「完整排名」為準：即使等一下被搜尋或標註篩掉，看到的仍是這家在整個範圍裡的真實名次
-  rows.forEach(function(r, i){ run += r.y2; r.cumShare = run / total; r.share = r.y2 / total; r.rank = i + 1; });
+  rows.forEach(function(r, i){ run += (r[mk] || 0); r.cumShare = run / total; r.share = (r[mk] || 0) / total; r.rank = i + 1; });
 
   var out = rows, q = String(state.custSearch || '').trim().toLowerCase();
   if (state.tagFilter) out = out.filter(function(r){ return tagsOf(r.name).indexOf(state.tagFilter) >= 0; });
@@ -2083,7 +2117,7 @@ function customerRows(pids, setMonth, limit){
   var narrowed = !!(state.tagFilter || q);
   return {
     rows: out.slice(0, narrowed ? 100 : (limit || 20)),   // 搜尋／標註模式下不受 Top 20 限制
-    total: total, count: rows.length, matched: out.length, narrowed: narrowed
+    total: total, metric: mk, count: rows.length, matched: out.length, narrowed: narrowed
   };
 }
 
@@ -2092,11 +2126,11 @@ function customerRows(pids, setMonth, limit){
     這兩種在拜訪前最值得先看。 */
 function customerProductBreakdown(ci, pids, setMonth){
   var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
-  var cur = {}, prior = {};
+  var cur = {}, prior = {}, curQ = {}, priorQ = {};
   DATA.facts.forEach(function(f){
     if (f[0] !== ci || !pset[f[1]] || f[3] > setMonth) return;
-    if (f[2] === IDX.curYear) cur[f[1]] = (cur[f[1]] || 0) + f[4];
-    else if (f[2] === IDX.priorYear) prior[f[1]] = (prior[f[1]] || 0) + f[4];
+    if (f[2] === IDX.curYear){ cur[f[1]] = (cur[f[1]] || 0) + f[4]; curQ[f[1]] = (curQ[f[1]] || 0) + (f[5] || 0); }
+    else if (f[2] === IDX.priorYear){ prior[f[1]] = (prior[f[1]] || 0) + f[4]; priorQ[f[1]] = (priorQ[f[1]] || 0) + (f[5] || 0); }
   });
   var seen = {}, rows = [];
   Object.keys(cur).concat(Object.keys(prior)).forEach(function(k){
@@ -2105,30 +2139,37 @@ function customerProductBreakdown(ci, pids, setMonth){
     var pi = +k, p = IDX.products[pi];
     if (!p) return;
     var y2 = cur[pi] || 0, y1 = prior[pi] || 0;
+    var q2 = Math.round(curQ[pi] || 0), q1 = Math.round(priorQ[pi] || 0);
     rows.push({
       pi: pi, name: p.name, category: p.category,
-      y1: y1, y2: y2,
+      y1: y1, y2: y2, q1: q1, q2: q2,
       growth: y1 ? y2 / y1 - 1 : null,
+      qGrowth: q1 ? q2 / q1 - 1 : null,
       isNew: y1 === 0 && y2 > 0,
-      isLost: y1 > 0 && y2 === 0
+      isLost: y1 > 0 && y2 === 0,
+      isNewQ: q1 === 0 && q2 > 0,
+      isLostQ: q1 > 0 && q2 === 0
     });
   });
   var total = rows.reduce(function(s, r){ return s + r.y2; }, 0);
-  rows.forEach(function(r){ r.share = total ? r.y2 / total : 0; });
+  var totalQ = rows.reduce(function(s, r){ return s + r.q2; }, 0);
+  rows.forEach(function(r){ r.share = total ? r.y2 / total : 0; r.qShare = totalQ ? r.q2 / totalQ : 0; });
   rows.sort(function(a, b){ return b.y2 - a.y2 || b.y1 - a.y1; });
-  return { rows: rows, y2Total: total, y1Total: rows.reduce(function(s, r){ return s + r.y1; }, 0) };
+  return { rows: rows, y2Total: total, y1Total: rows.reduce(function(s, r){ return s + r.y1; }, 0),
+           q2Total: totalQ, q1Total: rows.reduce(function(s, r){ return s + r.q1; }, 0) };
 }
 
 /** 單一客戶的每月業績（今年 vs 去年），用來畫小趨勢圖、看下單節奏 */
-function customerMonthlySeries(ci, pids){
+function customerMonthlySeries(ci, pids, useQty){
   var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
   var cur = [0,0,0,0,0,0,0,0,0,0,0,0], prior = cur.slice();
+  var vi = useQty ? 5 : 4;
   DATA.facts.forEach(function(f){
     if (f[0] !== ci || !pset[f[1]]) return;
     var m = f[3];
     if (m < 1 || m > 12) return;
-    if (f[2] === IDX.curYear) cur[m-1] += f[4];
-    else if (f[2] === IDX.priorYear) prior[m-1] += f[4];
+    if (f[2] === IDX.curYear) cur[m-1] += (f[vi] || 0);
+    else if (f[2] === IDX.priorYear) prior[m-1] += (f[vi] || 0);
   });
   return { cur: cur, prior: prior };
 }
@@ -2196,7 +2237,7 @@ var state = {
   subcats:{},              // 大分類（系列）：SYSTANE／TEARS／DURATEARS／NHI／SELFPAY／OTHER
   leafs:{},                // 視舒坦底下的第二層：HA／ULTRA／COMPLETE／SYSOTHER
   skus:[],                 // 已選品項（可複選）；空陣列＝看整個類別
-  chartMode:'amount', custSort:'current', gapSort:'order', gapOnlySel:false,
+  chartMode:'amount', custSort:'prior', gapSort:'order', gapOnlySel:false,
   openCustomer:null, showAllGap:false, showAllCust:false, channel:null,
   includeExcluded:false,   // 停用品項（Balance／HA 5CT／Travatan）預設不列入計算
   kpiCollapsed:false,
@@ -3004,9 +3045,9 @@ function renderGapTable(){
 
 function renderCustSortPills(){
   var el = document.getElementById('custSortPills'); el.innerHTML = '';
-  var opts = [['current','依今年 YTD 金額'],['prior','依去年 YTD（同 Excel）']];
+  var opts = [['current','依今年 YTD'],['prior','依去年 YTD']];
   if (IDX.hasQty) opts = opts.concat([['qty','依今年數量'],['qtyPrior','依去年數量']]);
-  if (!IDX.hasQty && (state.custSort === 'qty' || state.custSort === 'qtyPrior')) state.custSort = 'current';
+  if (!IDX.hasQty && (state.custSort === 'qty' || state.custSort === 'qtyPrior')) state.custSort = 'prior';
   opts.forEach(function(pair){
     var b = document.createElement('button');
     b.className = 'pill';
@@ -3073,10 +3114,16 @@ function customerDetailHtml(row){
   var pids = categoryProducts().map(function(p){ return p.i; });   // 忽略「單品」篩選，看這家客戶的完整品項組合
   var bd = customerProductBreakdown(row.ci, pids, state.setMonth);
   var accent = accentVar();
-  var spark = customerSparkline(customerMonthlySeries(row.ci, pids), state.setMonth, accent);
-  var growth = bd.y1Total ? bd.y2Total / bd.y1Total - 1 : null;
-  var newItems = bd.rows.filter(function(r){ return r.isNew; }).length;
-  var lostItems = bd.rows.filter(function(r){ return r.isLost; }).length;
+  // 上面用「數量」排序時，這張明細也整張跟著切成數量比較（含每月小趨勢圖），
+  // 才不會排序看數量、點開卻只看得到金額。
+  var qtyMode = IDX.hasQty && (state.custSort === 'qty' || state.custSort === 'qtyPrior');
+  var spark = customerSparkline(customerMonthlySeries(row.ci, pids, qtyMode), state.setMonth, accent);
+  var growth = qtyMode
+    ? (bd.q1Total ? bd.q2Total / bd.q1Total - 1 : null)
+    : (bd.y1Total ? bd.y2Total / bd.y1Total - 1 : null);
+  var newItems = bd.rows.filter(function(r){ return qtyMode ? r.isNewQ : r.isNew; }).length;
+  var lostItems = bd.rows.filter(function(r){ return qtyMode ? r.isLostQ : r.isLost; }).length;
+  if (qtyMode) bd.rows.sort(function(a, b){ return b.q2 - a.q2 || b.q1 - a.q1; });
 
   // 上方有選品項時，把那幾項釘到這張明細表最上面並標色：
   // 客戶的完整品項組合仍然全部留著（拜訪前要看的是整體組合），但焦點放在你正在追的品項。
@@ -3086,16 +3133,20 @@ function customerDetailHtml(row){
   if (selCount) bd.rows.sort(function(a, b){ return (selSet[b.pi] ? 1 : 0) - (selSet[a.pi] ? 1 : 0); });
 
   var lines = bd.rows.map(function(r){
-    var badge = r.isNew ? '<span class="mini-badge good">新開</span>'
-              : r.isLost ? '<span class="mini-badge critical">停買</span>' : '';
-    var gcls = r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down';
+    var isNew = qtyMode ? r.isNewQ : r.isNew, isLost = qtyMode ? r.isLostQ : r.isLost;
+    var v1 = qtyMode ? r.q1 : r.y1, v2 = qtyMode ? r.q2 : r.y2;
+    var g  = qtyMode ? r.qGrowth : r.growth, sh = qtyMode ? r.qShare : r.share;
+    var fmt = function(v){ return qtyMode ? (v ? nf.format(v) : '—') : compact(v); };
+    var badge = isNew ? '<span class="mini-badge good">新開</span>'
+              : isLost ? '<span class="mini-badge critical">停買</span>' : '';
+    var gcls = g == null ? '' : g >= 0 ? 'growth up' : 'growth down';
     return '<tr' + (selSet[r.pi] ? ' class="is-sel"' : '') + '>' +
       '<td class="name">' + esc(r.name) + ' <span class="tag ' + r.category.toLowerCase() + '">' + r.category + '</span> ' + badge + '</td>' +
-      '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
-      '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
-      '<td class="num ' + gcls + '" data-l="成長率">' + (r.isNew ? '新開' : pctSigned(r.growth)) + '</td>' +
+      '<td class="num" data-l="' + (qtyMode ? '去年數量' : '去年 YTD') + '">' + fmt(v1) + '</td>' +
+      '<td class="num" data-l="' + (qtyMode ? '今年數量' : '今年 YTD') + '">' + fmt(v2) + '</td>' +
+      '<td class="num ' + gcls + '" data-l="' + (qtyMode ? '數量成長' : '成長率') + '">' + (isNew ? '新開' : pctSigned(g)) + '</td>' +
       '<td class="num" data-l="佔此客戶"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:' +
-        Math.min(r.share * 100 * 2, 100).toFixed(0) + '%;background:' + accent + '"></div></div><span>' + pct(r.share, 1) + '</span></div></td>' +
+        Math.min(sh * 100 * 2, 100).toFixed(0) + '%;background:' + accent + '"></div></div><span>' + pct(sh, 1) + '</span></div></td>' +
     '</tr>';
   }).join('');
 
@@ -3104,15 +3155,17 @@ function customerDetailHtml(row){
       '<div class="detail-head-main">' +
         '<div class="detail-title">' + esc(row.name) + '<span class="detail-chan">' + (CHANNEL_LABEL[row.channel] || '') + '</span></div>' +
         '<div class="detail-figs">' +
-          '今年 YTD <b>' + compact(bd.y2Total) + '</b>　去年 <b>' + compact(bd.y1Total) + '</b>　' +
+          (qtyMode
+            ? '今年數量 <b>' + nf.format(bd.q2Total) + '</b>　去年 <b>' + nf.format(bd.q1Total) + '</b>　'
+            : '今年 YTD <b>' + compact(bd.y2Total) + '</b>　去年 <b>' + compact(bd.y1Total) + '</b>　') +
           '<span class="' + (growth == null ? '' : growth >= 0 ? 'growth up' : 'growth down') + '">YoY ' + pctSigned(growth) + '</span>　' +
-          '有交易品項 <b>' + bd.rows.filter(function(r){ return r.y2 > 0; }).length + '</b> 項' +
+          '有交易品項 <b>' + bd.rows.filter(function(r){ return qtyMode ? r.q2 > 0 : r.y2 > 0; }).length + '</b> 項' +
           (newItems ? '　<span class="growth up">新開 ' + newItems + ' 項</span>' : '') +
           (lostItems ? '　<span class="growth down">停買 ' + lostItems + ' 項</span>' : '') +
         '</div>' +
       '</div>' +
       '<div class="detail-spark">' +
-        '<div class="detail-side-title">每月業績　<span class="spark-key"><i class="sk-bar"></i>' + IDX.curYear +
+        '<div class="detail-side-title">' + (qtyMode ? '每月數量' : '每月業績') + '　<span class="spark-key"><i class="sk-bar"></i>' + IDX.curYear +
           '　<i class="sk-line"></i>' + IDX.priorYear + '</span></div>' + spark +
       '</div>' +
       '<button class="btn ghost detail-close" data-close="1" title="收合">✕</button>' +
@@ -3122,7 +3175,10 @@ function customerDetailHtml(row){
       ? '<p class="detail-note">上方已選的 ' + selCount + ' 個品項標在最前面；下面仍列出這家客戶的完整品項組合，方便拜訪前一起看。</p>'
       : '') +
     '<div class="detail-table-wrap"><table class="detail-table rwd"><thead><tr>' +
-      '<th>品項</th><th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">佔此客戶</th>' +
+      '<th>品項</th>' +
+      (qtyMode
+        ? '<th class="num">去年數量</th><th class="num">今年數量</th><th class="num">數量成長</th><th class="num">佔此客戶（數量）</th>'
+        : '<th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">佔此客戶</th>') +
     '</tr></thead><tbody>' + (lines || '<tr><td colspan="5" class="empty-note">這個範圍內沒有品項資料</td></tr>') + '</tbody></table></div>' +
   '</div></td></tr>';
 }
@@ -3148,7 +3204,7 @@ function renderCustTools(){
     var missing = DATA.kind === 'uploaded' && !IDX.hasQty;
     note.hidden = !missing;
     note.innerHTML = missing
-      ? '⚠ 目前這份資料沒有「數量」欄位（舊版存下來的），數量排序與缺口盒數需要把原始檔再上傳一次才會出現。'
+      ? '⚠ 目前這份資料沒有讀到「數量」欄位，數量排序與缺口盒數暫時看不到。舊資料把原始檔再上傳一次即可；剛上傳過仍如此，請檢查 DED資料 AI 欄／GE資料 N 欄是不是數量。'
       : '';
   }
   var counts = tagCounts(), el = document.getElementById('tagFilterPills');
@@ -3196,18 +3252,24 @@ function renderCustomers(){
     return;
   }
   if (res.narrowed){
-    var sumY2 = res.rows.reduce(function(a, r){ return a + r.y2; }, 0);
+    var isQ = res.metric === 'q2' || res.metric === 'q1';
+    var sumM = res.rows.reduce(function(a, r){ return a + (r[res.metric] || 0); }, 0);
+    var mLab = { y2:'今年 YTD', y1:'去年 YTD', q2:'今年數量', q1:'去年數量' }[res.metric] || '今年 YTD';
     callout.innerHTML = '🔎 在此範圍的 ' + res.count + ' 家客戶中找到 <b>' + res.matched + '</b> 家' +
       (state.custSearch ? '（搜尋：「' + esc(state.custSearch) + '」）' : '') +
       (state.tagFilter ? '（標註：' + esc(state.tagFilter) + '）' : '') +
-      '，合計今年 YTD <b>' + compact(sumY2) + '</b>，佔此範圍 <b>' + pct(sumY2 / res.total, 1) + '</b>。左邊的名次是他在完整排名裡的真實名次。';
+      '，合計' + mLab + ' <b>' + (isQ ? nf.format(Math.round(sumM)) : compact(sumM)) + '</b>，佔此範圍 <b>' +
+      pct(sumM / res.total, 1) + '</b>。左邊的名次是他在完整排名裡的真實名次。';
   } else {
     var hitIdx = -1;
     res.rows.forEach(function(r, i){ if (hitIdx < 0 && r.cumShare >= 0.8) hitIdx = i; });
     var last = res.rows[res.rows.length - 1];
-    callout.innerHTML = hitIdx >= 0
-      ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的業績（共 ' + res.count + ' 家有交易）'
-      : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表業績分散在 ' + res.count + ' 家客戶。';
+    var sortLab = { y2:'今年 YTD', y1:'去年 YTD', q2:'今年數量', q1:'去年數量' }[res.metric] || '今年 YTD';
+    var what = (res.metric === 'q2' || res.metric === 'q1') ? '數量' : '業績';
+    callout.innerHTML = (hitIdx >= 0
+      ? '📌 前 <b>' + (hitIdx + 1) + '</b> 大客戶／院所貢獻了此範圍約 80% 的' + what + '（共 ' + res.count + ' 家有交易）'
+      : '📌 前 ' + res.rows.length + ' 大客戶／院所貢獻約 <b>' + pct(last.cumShare, 0) + '</b>，尚未跨過 80%，代表' + what + '分散在 ' + res.count + ' 家客戶。') +
+      '　<span style="color:var(--ink-faint)">（目前排序：' + sortLab + '）</span>';
   }
   // 目前展開的客戶若已不在這個範圍的名單裡，就自動收合
   if (state.openCustomer != null && !res.rows.some(function(r){ return r.ci === state.openCustomer; })) state.openCustomer = null;
@@ -3923,8 +3985,9 @@ function renderSourceBar(){
     : '最後更新：' + new Date(DATA.updatedAt).toLocaleString('zh-TW') +
       '｜下個月只要再拖一次新的原始檔覆蓋即可。資料記在<b>這台電腦的瀏覽器</b>裡，同一個連結下次打開會自動帶出來；換電腦或清瀏覽器資料才需要重新上傳。' +
       (IDX && !IDX.hasQty
-        ? '<br><span class="need-requp">⚠ 這份資料是舊版存下來的，<b>沒有「數量」欄位</b>，所以「數量排序」與「缺口盒數」暫時看不到。' +
-          '請把原始檔<b>再上傳一次</b>（同一份就可以，數字不會變），這兩個功能就會出現。</span>'
+        ? '<br><span class="need-requp">⚠ 這份資料<b>沒有讀到「數量」欄位</b>，所以「數量排序」與「缺口盒數」暫時看不到。' +
+          '如果是舊版存下來的，把原始檔<b>再上傳一次</b>（同一份就可以，數字不會變）就會出現；' +
+          '若剛上傳過還是這樣，請確認 <code>DED資料</code> 的 <b>AI 欄</b>、<code>GE資料</code> 的 <b>N 欄</b>是數量，欄位順序不要被調動。</span>'
         : '');
   document.getElementById('resetBtn').hidden = demo;
   document.getElementById('footNote').innerHTML =
