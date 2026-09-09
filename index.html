@@ -140,6 +140,11 @@
   .kpi-value .unit{ font-size:13px; color:var(--ink-faint); font-family:'IBM Plex Sans',sans-serif; margin-left:3px; }
   .kpi-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:2px; }
   .kpi-meta{ display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--ink-muted); margin-top:6px; flex-wrap:wrap; }
+  .box-need{ color:var(--critical); font-weight:600; }
+  .box-over{ color:var(--good); font-weight:600; }
+  .box-unit{ display:block; font-size:10px; color:var(--ink-faint); font-weight:400; }
+  .box-unit.est{ color:var(--watch); }
+  .box-unit.alt{ color:var(--accent-ge); }
   .gap-behind{ color:var(--critical); font-weight:600; }
   .gap-ahead{ color:var(--good); font-weight:600; }
   .yoy.up{ color:var(--good); font-weight:600; } .yoy.down{ color:var(--critical); font-weight:600; }
@@ -754,7 +759,9 @@
           <table class="rwd">
             <thead><tr>
               <th class="num">#</th><th>客戶名稱</th><th>通路別</th>
-              <th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th><th class="num">累計佔比</th>
+              <th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th>
+              <th class="num qty-col">去年數量</th><th class="num qty-col">今年數量</th><th class="num qty-col">數量成長</th>
+              <th class="num">累計佔比</th>
             </tr></thead>
             <tbody id="custTableBody"></tbody>
           </table>
@@ -858,6 +865,56 @@ var SYSTANE_LEAFS = ['HA','ULTRA','COMPLETE','SYSOTHER'];
 
 function normName(s){ return String(s||'').toUpperCase().replace(/[‐-―]/g,'-').replace(/\s+/g,' ').trim(); }
 var P2_SET = P2_NAMES.map(normName), NHI_SET = GE_NHI_NAMES.map(normName), SELF_SET = GE_SELFPAY_NAMES.map(normName);
+
+
+/* -------------------- 診所價目表（換算「缺口＝幾盒」的依據） --------------------
+   刻意用固定價目表、不用資料回推：三個通路的價格不一致，而且衝業績時是用
+   「診所最大口的搭贈價」在出貨，用實際成交均價回推會被醫院／藥局的價格拉偏。
+   下面每一項的 use = 最大口搭贈後的均價（列表中最後一階），tiers 只是拿來顯示對照。
+   價目表更新時改這一段就好，畫面與所有換算會自動跟著變。                         */
+var PRICE_BOOK = [
+  ['DURATEARS OINTMENT 3.5GM',              55.83, '發票價 67｜<20 →68｜20+3 →58.26｜100+20 →55.83'],
+  ['TEARS NATURALE II 15ML/20ML',           72.73, '發票價 120｜20+5 →96｜50+25 →80｜100+65 →72.73'],
+  ['TEARS NATURALE FREE 32S',              195.15, '發票價 280｜10+2 →233.3｜18+6 →210｜46+20 →195.15'],
+  ['SYSTANE ULTRA 10ML',                   153.33, '發票價 220｜10+2 →183.33｜18+6 →165｜46+20 →153.33'],
+  ['SYSTANE ULTRA UNIT DOSE 30 CT',        205.61, '發票價 295｜10+2 →245.83｜18+6 →221.25｜46+20 →205.61'],
+  ['SYSTANE HA MULTIDOSE 10ML',            195.15, '發票價 280｜10+2 →233.3｜18+6 →210｜46+20 →195.15'],
+  ['SYSTANE HA UNITDOSE 30CT',             254.39, '發票價 365｜10+2 →304.17｜18+6 →273.75｜46+20 →254.39'],
+  ['SYSTANE COMPLETE 10ML',                243.94, '發票價 350｜10+2 →291.67｜18+6 →262.5｜46+20 →243.94'],
+  ['SYSTANE ULTRA MDPF 10ML',              200.00, '發票價 320｜10+2 →266.67｜24+10 →225.88｜50+30 →200'],
+  ['SYSTANE HA MDPF 10ML',                 237.50, '發票價 380｜10+2 →316.67｜24+10 →268.24｜50+30 →237.5'],
+  ['AZOPT 1% 5ML-TPE',                     172.50, '健保價 230｜13+2 →199.33｜30+10 →172.5'],
+  ['AZARGA 5ML-TPE',                       163.50, '健保價 218｜13+2 →188.93｜30+10 →163.5'],
+  ['SIMBRINZA LDMO 10/2MG/ML LDPE 5ML (X) TW', 191.25, '健保價 255｜13+2 →221｜30+10 →191.25'],
+  ['IZBA 0.003% 2.5ML-TPE',                288.75, '健保價 385｜13+2 →333.67｜30+10 →288.75'],
+  ['DUOTRAV BAK-FREE 2.5ML-TPE',           353.25, '健保價 471｜13+2 →408.2｜30+10 →353.25'],
+  ['VIGAMOX 0.5% 5ML - TPE',               492.30, '發票價 800｜10+3 →615.4｜30+14 →545.5｜40+25 →492.3（術後包 V+N 10組↑ →450）'],
+  ['NEVANAC 0.1% 5ML - TPE',               523.10, '發票價 850｜10+3 →653.8｜30+14 →579.5｜40+25 →523.1（術後包 V+N 10組↑ →450）'],
+  ['PATANOL 0.1% 5ML-TPE',                 235.00, '發票價 400｜10+5 →267｜20+12 →250｜50+35 →235']
+];
+/* 藥局通路是另一張價目表（進價與搭贈都跟診所不同）。
+   康復力 5ml 與 Ultra 24入 是藥局獨有品項，診所價目表沒有，換算就用藥局價。 */
+var PRICE_BOOK_PHARMACY = [
+  ['DURATEARS OINTMENT 3.5GM',              58.64, '藥局進價 61.57｜40+2 →58.64'],
+  ['TEARS NATURALE II 15ML/20ML',           85.71, '藥局進價 100｜40+5 →88.89｜60+10 →85.71'],
+  ['TEARS NATURALE FREE 32S',              350.00, '藥局進價 350｜無搭贈'],
+  ['SYSTANE ULTRA 10ML',                   155.75, '藥局進價 178｜10+1 →161.82｜35+5 →155.75'],
+  ['SYSTANE ULTRA UNIT DOSE 24/25 CT',     295.00, '藥局進價 295｜無搭贈（藥局獨有品項）'],
+  ['SYSTANE COMPLETE 5ML',                 214.29, '藥局進價 250｜8+1 →222.22｜30+5 →214.29（藥局獨有品項）'],
+  ['SYSTANE HA MULTIDOSE 10ML',            306.25, '藥局進價 350｜8+1 →311.11｜35+5 →306.25'],
+  ['SYSTANE HA UNITDOSE 30CT',             450.00, '藥局進價 450｜無搭贈']
+];
+var PRICE_MAP = {}, PRICE_MAP_PH = {};
+PRICE_BOOK.forEach(function(r){ PRICE_MAP[normName(r[0])] = { use:r[1], note:r[2] }; });
+PRICE_BOOK_PHARMACY.forEach(function(r){ PRICE_MAP_PH[normName(r[0])] = { use:r[1], note:r[2] }; });
+/** 換算盒數用哪個價：以診所最大口為主（衝業績的實際做法）；
+    診所價目表沒有的品項（藥局獨有）就用藥局價。兩邊都有時，另一邊放在說明裡對照。 */
+function bookPrice(name){
+  var k = normName(name), c = PRICE_MAP[k], ph = PRICE_MAP_PH[k];
+  if (c) return { use:c.use, note:c.note, chan:'診所', other: ph ? '藥局：' + ph.note : '' };
+  if (ph) return { use:ph.use, note:ph.note, chan:'藥局', other:'' };
+  return null;
+}
 
 /* -------------------- 品項顯示順序 + 停用品項 --------------------
    順序照你看盤的習慣排（HA → Ultra → Complete → 淚然／淚膜；GE 依 IZBA…Patanol），
@@ -1359,7 +1416,21 @@ function monthKeyFrom(row, idx){
 
 function makeCollector(){
   var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
-      agg = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
+      agg = {}, aggQ = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
+  // 單價要在「逐筆」階段統計：彙總之後贈品列（金額 0、數量 >0）會把單價拉低，
+  // 那是搭贈後的實質單價，不是我們要的「一盒開多少錢」。這裡只採計金額與數量都 >0 的列。
+  // 依年度分開統計，最後只取「最新一年」的單價：去年的價格帶跟今年常常不一樣，
+  // 混在一起會抓到已經不適用的舊價。
+  var priceHits = {};      // pi -> { 年: { Clinic:{單價:數量}, ALL:{單價:數量} } }
+  function notePrice(pi, chan, amt, qty, year){
+    if (!(amt > 0) || !(qty > 0)) return;
+    var u = Math.round(amt / qty);
+    if (!(u > 0)) return;
+    var byY = priceHits[pi] || (priceHits[pi] = {});
+    var h = byY[year] || (byY[year] = { Clinic:{}, ALL:{} });
+    h.ALL[u] = (h.ALL[u] || 0) + qty;
+    if (chan === 'Clinic') h.Clinic[u] = (h.Clinic[u] || 0) + qty;
+  }
   return {
     products: products, customers: customers, targets: targets,
     /** 依「正規化後的品項名稱」找既有品項（處理全形/半形破折號、大小寫、空白差異） */
@@ -1415,26 +1486,51 @@ function makeCollector(){
         c[1] = r.id; c[2] = r.raw;
       });
     },
-    add: function(ci, pi, y, m, amt){
+    add: function(ci, pi, y, m, amt, qty){
       var k = ci + '|' + pi + '|' + y + '|' + m;
       agg[k] = (agg[k] || 0) + amt;
+      aggQ[k] = (aggQ[k] || 0) + (qty || 0);
       yearsSeen[y] = 1;
+    },
+    notePrice: notePrice,
+    /** 每個品項的「診所最大宗單價」：診所交易裡出現最多支數的那個單價；
+        診所沒有交易的品項就退而求其次用全通路。 */
+    unitPrices: function(){
+      var out = [];
+      function mode(o){
+        var best = 0, bestQ = 0;
+        Object.keys(o || {}).forEach(function(u){ if (o[u] > bestQ){ bestQ = o[u]; best = +u; } });
+        return best;
+      }
+      products.forEach(function(p, pi){
+        var byY = priceHits[pi];
+        if (!byY) return;
+        var years = Object.keys(byY).map(Number).sort(function(a,b){ return b - a; });
+        for (var i = 0; i < years.length; i++){        // 從最新年度往回找，找到就停
+          var h = byY[years[i]];
+          var c = mode(h.Clinic), a = mode(h.ALL);
+          var u = c || a;
+          if (u > 0){ out.push([pi, u, c ? 'Clinic' : 'ALL']); return; }
+        }
+      });
+      return out;
     },
     peekYears: function(){ return Object.keys(yearsSeen).map(Number); },
     finish: function(){
-      var sum = {};
+      var sum = {}, sumQ = {};
       Object.keys(agg).forEach(function(k){
         var p = k.split('|');
         var ci = remap ? remap[+p[0]] : +p[0];      // 合併後客戶索引會變，這裡一起改寫
         var kk = ci + '|' + p[1] + '|' + p[2] + '|' + p[3];
         sum[kk] = (sum[kk] || 0) + agg[k];
+        sumQ[kk] = (sumQ[kk] || 0) + (aggQ[k] || 0);
       });
       var facts = [];
       Object.keys(sum).forEach(function(k){
-        var v = Math.round(sum[k]);
-        if (!v) return;
+        var v = Math.round(sum[k]), q = Math.round(sumQ[k] || 0);
+        if (!v && !q) return;
         var p = k.split('|');
-        facts.push([ +p[0], +p[1], +p[2], +p[3], v ]);
+        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q ]);   // 第 6 欄＝數量
       });
       return facts;
     }
@@ -1452,6 +1548,7 @@ function ingestSalesRows(kind, header, rowIter, col){
     var amtCol = firstIndex(h, DED_AMT_NAMES);
     idx = {
       cust: firstIndex(h, DED_CUST_NAMES), prod: firstIndex(h, DED_PROD_NAMES), amt: amtCol,
+      qty: firstIndex(h, ['數量','Billing Qty:Base UoM','Billing Qty']),
       chan: chanCols.length ? chanCols[chanCols.length - 1] : -1,   // 兩欄同名，文字那欄在後面
       mk: h.indexOf('月'), year: h.indexOf('年'), period: -1, date: h.indexOf('Billing doc. date')
     };
@@ -1461,6 +1558,7 @@ function ingestSalesRows(kind, header, rowIter, col){
       // 實測：折讓是獨立的列（那些列 Net Sales Amount＝0，會被下面的 amt===0 濾掉），
       // 有金額的 633 列 Discount 一律為 0，所以加總 M 欄不會重複扣到折讓。
       cust: h.indexOf('Customer Name'), prod: h.indexOf('Item Description'), amt: h.indexOf('Net Sales Amount'),
+      qty: h.indexOf('Net Sales Quantity'),
       chan: h.indexOf('Customer Channel'),
       // 月份一定要用 C 欄「Sales Period」，不能用 D 欄「Month」。
       // GE資料有兩個月份欄，約 4% 的列兩邊不一致（跨期的退貨／更正：例如 7 月的退貨
@@ -1480,10 +1578,15 @@ function ingestSalesRows(kind, header, rowIter, col){
     if (!ym){ skipped++; return; }
     var amt = parseFloat(String(row[idx.amt] != null ? row[idx.amt] : '').replace(/,/g, ''));
     if (!isFinite(amt) || amt === 0){ skipped++; return; }
+    var qty = idx.qty >= 0 ? parseFloat(String(row[idx.qty] != null ? row[idx.qty] : '').replace(/,/g, '')) : 0;
+    if (!isFinite(qty)) qty = 0;
     var pname = String(row[idx.prod] || '').trim();
     var cname = String(row[idx.cust] || '').trim();
     if (!pname || !cname){ skipped++; return; }
-    col.add(col.ci(cname, idx.chan >= 0 ? row[idx.chan] : ''), col.pi(pname, kind), ym[0], ym[1], amt);
+    var rawChan = idx.chan >= 0 ? row[idx.chan] : '';
+    var pi = col.pi(pname, kind);
+    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty);
+    col.notePrice(pi, channelOf(rawChan), amt, qty, ym[0]);
     used++;
   });
   return { used:used, skipped:skipped, scanned:scanned };
@@ -1705,11 +1808,13 @@ async function buildDatasetFromFiles(files, onProgress){
   });
   if (!totalUsed && !targetCount) throw new Error('沒有讀到任何可用的資料列');
 
+  var prices = col.unitPrices();
   col.consolidate();
   col.resolveChannels();
   return {
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
-    products: col.products, customers: col.customers, facts: col.finish(), targets: col.targets
+    products: col.products, customers: col.customers, facts: col.finish(),
+    targets: col.targets, prices: prices
   };
 }
 
@@ -1738,7 +1843,8 @@ function mergeDatasets(oldDs, newDs){
       var c = ds.customers[f[0]], p = ds.products[f[1]];
       if (!c || !p) return;
       var k = cid(c) + '|' + pid(p[0], p[1]) + '|' + f[2] + '|' + f[3];
-      agg[k] = (agg[k] || 0) + f[4];
+      var o = agg[k] || (agg[k] = [0, 0]);
+      o[0] += f[4]; o[1] += (f[5] || 0);
     });
   }
   absorb(newDs, function(){ return true; });                                  // 新檔全部收下
@@ -1746,8 +1852,9 @@ function mergeDatasets(oldDs, newDs){
 
   var facts = [];
   Object.keys(agg).forEach(function(k){
-    var v = Math.round(agg[k]); if (!v) return;
-    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v ]);
+    var v = Math.round(agg[k][0]), qq = Math.round(agg[k][1]);
+    if (!v && !qq) return;
+    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v, qq ]);
   });
 
   // 目標：新檔有帶目標就用新的，否則沿用舊的（都以品項名稱對應，索引會變）
@@ -1772,13 +1879,27 @@ function mergeDatasets(oldDs, newDs){
     var q = k.split('|'); return [ +q[0], +q[1], +q[2], Math.round(tAgg[k]) ];
   });
 
+  // 單價：新檔算得出來的優先，其餘沿用舊的（依品項名稱對應）
+  var priceBy = {};
+  function carryPrices(ds){
+    if (!ds || !ds.prices) return;
+    ds.prices.forEach(function(pr){
+      var p = ds.products[pr[0]];
+      if (!p) return;
+      var key = pid(p[0], p[1]);
+      if (priceBy[key] == null) priceBy[key] = [key, pr[1], pr[2]];
+    });
+  }
+  carryPrices(newDs); carryPrices(oldDs);
+  var prices = Object.keys(priceBy).map(function(k){ return priceBy[k]; });
+
   var srcs = (newDs.sources || []).slice();
   (oldDs && oldDs.sources ? oldDs.sources : []).forEach(function(x){
     if (!srcs.some(function(y){ return y.name === x.name && y.sheet === x.sheet; })) srcs.push(x);
   });
   return {
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:srcs.slice(0, 8),
-    products:products, customers:customers, facts:facts, targets:targets,
+    products:products, customers:customers, facts:facts, targets:targets, prices:prices,
     mergedMonths: Object.keys(touched).sort()
   };
 }
@@ -1826,14 +1947,19 @@ function buildIndex(ds){
   });
 
   var zeros = function(){ return [0,0,0,0,0,0,0,0,0,0,0,0]; };
-  var prodMonthly = products.map(function(){ return { cur:zeros(), prior:zeros() }; });
+  var prodMonthly = products.map(function(){ return { cur:zeros(), prior:zeros(), curQ:zeros(), priorQ:zeros() }; });
   var prodTarget  = products.map(function(){ return zeros(); });
   var latestMonth = 0;
   ds.facts.forEach(function(f){
     var pi = f[1], y = f[2], m = f[4] != null ? f[3] : f[3], amt = f[4];
     if (!prodMonthly[pi] || m < 1 || m > 12) return;
-    if (y === curYear){ prodMonthly[pi].cur[m-1] += amt; if (amt) latestMonth = Math.max(latestMonth, m); }
-    else if (y === priorYear){ prodMonthly[pi].prior[m-1] += amt; }
+    var qv = f[5] || 0;
+    if (y === curYear){
+      prodMonthly[pi].cur[m-1] += amt; prodMonthly[pi].curQ[m-1] += qv;
+      if (amt) latestMonth = Math.max(latestMonth, m);
+    } else if (y === priorYear){
+      prodMonthly[pi].prior[m-1] += amt; prodMonthly[pi].priorQ[m-1] += qv;
+    }
   });
   ds.targets.forEach(function(t){
     var pi = t[0], y = t[1], m = t[2];
@@ -1841,28 +1967,50 @@ function buildIndex(ds){
   });
   if (!latestMonth) latestMonth = 12;
 
+  // 換算盒數用的單價：以「診所價目表的最大口搭贈均價」為準；
+  // 價目表沒有的品項（例如同事那邊才有的 SKU）才退而求其次用資料推估，並標明是推估值。
+  var unitPrice = products.map(function(){ return 0; });
+  var priceSrc  = products.map(function(){ return ''; });
+  var priceNote = products.map(function(){ return ''; });
+  var priceChan = products.map(function(){ return ''; });
+  (ds.prices || []).forEach(function(pr){
+    if (unitPrice[pr[0]] != null){ unitPrice[pr[0]] = pr[1]; priceSrc[pr[0]] = 'est'; }
+  });
+  products.forEach(function(p, i){
+    var b = bookPrice(p.name);
+    if (b){
+      unitPrice[i] = b.use; priceSrc[i] = 'book'; priceChan[i] = b.chan;
+      priceNote[i] = b.note + (b.other ? '\n' + b.other : '');
+    }
+  });
   return {
     curYear:curYear, priorYear:priorYear, products:products, customers:customers,
     prodMonthly:prodMonthly, prodTarget:prodTarget, latestMonth:latestMonth,
-    hasTargets: ds.targets.length > 0
+    unitPrice:unitPrice, priceSrc:priceSrc, priceNote:priceNote, priceChan:priceChan,
+    hasTargets: ds.targets.length > 0,
+    hasQty: ds.facts.some(function(f){ return f[5] > 0; })
   };
 }
 
 function sumMonths(arr, m1, m2){ var s = 0; for (var m = m1; m <= m2; m++) s += arr[m-1] || 0; return s; }
 
 function periodStats(pids, m1, m2){
-  var actual = 0, prior = 0, target = 0;
+  var actual = 0, prior = 0, target = 0, actualQ = 0, priorQ = 0;
   pids.forEach(function(pi){
     actual += sumMonths(IDX.prodMonthly[pi].cur, m1, m2);
     prior  += sumMonths(IDX.prodMonthly[pi].prior, m1, m2);
     target += sumMonths(IDX.prodTarget[pi], m1, m2);
+    actualQ += sumMonths(IDX.prodMonthly[pi].curQ, m1, m2);
+    priorQ  += sumMonths(IDX.prodMonthly[pi].priorQ, m1, m2);
   });
   var hasTarget = IDX.hasTargets && target > 0;
   return {
     actual:actual, prior:prior, target: hasTarget ? target : null,
+    actualQ:actualQ, priorQ:priorQ,
     gap: hasTarget ? target - actual : null,
     achievement: hasTarget ? actual / target : null,
-    yoy: prior ? actual / prior - 1 : null
+    yoy: prior ? actual / prior - 1 : null,
+    qtyYoy: priorQ ? actualQ / priorQ - 1 : null
   };
 }
 function quarterStart(m){ return Math.floor((m-1)/3)*3 + 1; }
@@ -1888,10 +2036,11 @@ function trendSeries(pids, setMonth){
 function customerRows(pids, setMonth, limit){
   var pset = {}; pids.forEach(function(p){ pset[p] = 1; });
   var cur = {}, prior = {};
+  var curQ = {}, priorQ = {};
   DATA.facts.forEach(function(f){
     if (!pset[f[1]] || f[3] > setMonth) return;
-    if (f[2] === IDX.curYear) cur[f[0]] = (cur[f[0]] || 0) + f[4];
-    else if (f[2] === IDX.priorYear) prior[f[0]] = (prior[f[0]] || 0) + f[4];
+    if (f[2] === IDX.curYear){ cur[f[0]] = (cur[f[0]] || 0) + f[4]; curQ[f[0]] = (curQ[f[0]] || 0) + (f[5] || 0); }
+    else if (f[2] === IDX.priorYear){ prior[f[0]] = (prior[f[0]] || 0) + f[4]; priorQ[f[0]] = (priorQ[f[0]] || 0) + (f[5] || 0); }
   });
   var rows = [];
   Object.keys(cur).concat(Object.keys(prior)).forEach(function(k){ if (!rows.some(function(r){ return r.ci === +k; })) rows.push({ ci:+k }); });
@@ -1907,11 +2056,18 @@ function customerRows(pids, setMonth, limit){
     r.y2 = cur[r.ci] || 0;
     r.y1 = prior[r.ci] || 0;
     r.growth = r.y1 ? r.y2 / r.y1 - 1 : null;
+    r.q2 = Math.round(curQ[r.ci] || 0);
+    r.q1 = Math.round(priorQ[r.ci] || 0);
+    r.qGrowth = r.q1 ? r.q2 / r.q1 - 1 : null;
   });
-  // 排序基準：今年 YTD（預設，最能反映現況）或去年 YTD（與 Excel「客戶排名」分頁一致，方便逐列核對）
-  rows.sort(state.custSort === 'prior'
-    ? function(a,b){ return b.y1 - a.y1; }
-    : function(a,b){ return b.y2 - a.y2; });
+  // 排序基準：今年／去年金額，或今年／去年數量（看誰進得多、不看金額大小）
+  var SORTS = {
+    current:  function(a,b){ return b.y2 - a.y2; },
+    prior:    function(a,b){ return b.y1 - a.y1; },
+    qty:      function(a,b){ return b.q2 - a.q2 || b.y2 - a.y2; },
+    qtyPrior: function(a,b){ return b.q1 - a.q1 || b.y1 - a.y1; }
+  };
+  rows.sort(SORTS[state.custSort] || SORTS.current);
   var total = rows.reduce(function(s,r){ return s + r.y2; }, 0) || 1;
   var run = 0;
   // 名次一律以「完整排名」為準：即使等一下被搜尋或標註篩掉，看到的仍是這家在整個範圍裡的真實名次
@@ -1997,7 +2153,9 @@ function gapRows(pids, setMonth, channel){
       var p = IDX.products[pi], st = periodStats([pi], 1, setMonth);
       total += st.actual;
       return { pi:pi, name:p.name, category:p.category, ord:p.ord, excluded:p.excluded,
-               actual:st.actual, prior:st.prior,
+               actual:st.actual, prior:st.prior, actualQ:st.actualQ, priorQ:st.priorQ,
+               unit:IDX.unitPrice[pi] || 0, priceSrc:IDX.priceSrc[pi] || '', priceNote:IDX.priceNote[pi] || '',
+               priceChan:IDX.priceChan[pi] || '',
                target:st.target, gap:st.gap, achievement:st.achievement, yoy:st.yoy };
     });
   } else {
@@ -2016,7 +2174,9 @@ function gapRows(pids, setMonth, channel){
       var p = IDX.products[pi], a = cur[pi] || 0, b = pri[pi] || 0;
       total += a;
       return { pi:pi, name:p.name, category:p.category, ord:p.ord, excluded:p.excluded,
-               actual:a, prior:b,
+               actual:a, prior:b, actualQ:0, priorQ:0,
+               unit:IDX.unitPrice[pi] || 0, priceSrc:IDX.priceSrc[pi] || '', priceNote:IDX.priceNote[pi] || '',
+               priceChan:IDX.priceChan[pi] || '',
                target:null, gap:null, achievement:null, yoy: b ? a / b - 1 : null };
     }).filter(function(r){ return r.actual || r.prior; });
   }
@@ -2709,6 +2869,21 @@ function renderCharts(){
     (sel.length >= 2 && mode !== 'amount' ? '（達成率模式為 ' + sel.length + ' 項合計；切到「金額趨勢」可逐項對比）' : '');
 }
 
+/** 缺口換算成「大概幾盒」：用該品項在診所的最大宗成交單價估。
+    超前的品項顯示可以少出幾盒，方便判斷要不要收手。 */
+function boxCell(r){
+  if (!r.unit || r.gap == null) return '—';
+  var boxes = Math.round(Math.abs(r.gap) / r.unit);
+  if (!boxes) return '—';
+  var est = r.priceSrc !== 'book';
+  var mark = est ? '（推估）' : (r.priceChan === '藥局' ? '（藥局價）' : '');
+  var tag = '<span class="box-unit' + (est ? ' est' : (mark ? ' alt' : '')) + '">@' +
+            nf.format(Math.round(r.unit * 100) / 100) + mark + '</span>';
+  return (r.gap > 0
+    ? '<span class="box-need">≈ ' + nf.format(boxes) + ' 盒</span>'
+    : '<span class="box-over">已超 ' + nf.format(boxes) + ' 盒</span>') + tag;
+}
+
 function renderGapSortPills(){
   var el = document.getElementById('gapSortPills'); el.innerHTML = '';
   [['order','依品項順序'],['actual','依 YTD 實績']].forEach(function(pair){
@@ -2751,7 +2926,9 @@ function renderGapTable(){
     ? '<th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>' +
       '<th class="num">去年同期</th><th class="num">YoY</th><th>狀態</th>'
     : '<th>品項</th><th>類別</th><th class="num">YTD 實績</th><th class="num">佔比</th>' +
-      '<th class="num">YTD 目標</th><th class="num">缺口／超前</th><th class="num">達成率</th><th>狀態</th>';
+      '<th class="num">YTD 目標</th><th class="num">缺口／超前</th>' +
+      (IDX.hasQty ? '<th class="num" title="以該品項在診所的最大宗成交單價估算">缺口盒數</th>' : '') +
+      '<th class="num">達成率</th><th>狀態</th>';
 
   var catLabel = state.category === 'ALL' ? '全部產品' : (state.category === 'DED' ? '人工淚液 DED' : '青光眼 GE');
   catLabel += filterSuffix();
@@ -2787,6 +2964,14 @@ function renderGapTable(){
         '<td class="num" data-l="缺口／超前">' + (r.gap == null ? '—'
             : r.gap > 0 ? '<span class="gap-behind">缺 ' + compact(r.gap) + '</span>'
                         : '<span class="gap-ahead">超前 ' + compact(Math.abs(r.gap)) + '</span>') + '</td>' +
+        (IDX.hasQty
+          ? '<td class="num" data-l="缺口盒數" title="' + esc(r.unit
+              ? (r.priceSrc === 'book'
+                  ? '採用' + r.priceChan + '最大口搭贈均價 ' + r.unit + ' 元／盒\n' + r.priceNote
+                  : '價目表沒有這個品項，改用資料推估的診所最大宗成交單價 ' + Math.round(r.unit) + ' 元／盒')
+              : '無法估算單價') + '">' +
+            boxCell(r) + '</td>'
+          : '') +
         '<td class="num" data-l="達成率">' + pct(r.achievement, 0) + '</td>';
     return '<tr class="gap-row' + (on ? ' is-sel' : '') + (r.excluded ? ' excl' : '') + '" data-pi="' + r.pi +
       '" tabindex="0" role="button" aria-pressed="' + on + '" title="點一下把「' + esc(r.name) + '」設為分析範圍（可再點第二項做比較）">' +
@@ -2815,7 +3000,10 @@ function renderGapTable(){
 
 function renderCustSortPills(){
   var el = document.getElementById('custSortPills'); el.innerHTML = '';
-  [['current','依今年 YTD'],['prior','依去年 YTD（同 Excel）']].forEach(function(pair){
+  var opts = [['current','依今年 YTD 金額'],['prior','依去年 YTD（同 Excel）']];
+  if (IDX.hasQty) opts = opts.concat([['qty','依今年數量'],['qtyPrior','依去年數量']]);
+  if (!IDX.hasQty && (state.custSort === 'qty' || state.custSort === 'qtyPrior')) state.custSort = 'current';
+  opts.forEach(function(pair){
     var b = document.createElement('button');
     b.className = 'pill';
     b.textContent = pair[1];
@@ -2907,7 +3095,7 @@ function customerDetailHtml(row){
     '</tr>';
   }).join('');
 
-  return '<tr class="detail-row"><td colspan="7" class="detail-cell"><div class="detail-wrap">' +
+  return '<tr class="detail-row"><td colspan="10" class="detail-cell"><div class="detail-wrap">' +
     '<div class="detail-head">' +
       '<div class="detail-head-main">' +
         '<div class="detail-title">' + esc(row.name) + '<span class="detail-chan">' + (CHANNEL_LABEL[row.channel] || '') + '</span></div>' +
@@ -2976,6 +3164,8 @@ function renderCustTools(){
 function renderCustomers(){
   renderCustSortPills();
   renderCustTools();
+  // 舊版存下來的資料沒有數量欄位，這時候把數量欄整個藏起來，不要留一排「—」
+  Array.prototype.forEach.call(document.querySelectorAll('th.qty-col'), function(th){ th.hidden = !IDX.hasQty; });
   var ids = scopeIds();
   var res = customerRows(ids, state.setMonth, 20);
   document.getElementById('custScopeHint').textContent =
@@ -2989,7 +3179,7 @@ function renderCustomers(){
       ? '這個範圍裡沒有符合的客戶' + (state.custSearch ? '（搜尋：「' + state.custSearch + '」）' : '') +
         '。可以換個關鍵字，或把上方的類別／品項改成「全部」再找一次。'
       : '此範圍沒有客戶資料。';
-    document.getElementById('custTableBody').innerHTML = '<tr><td colspan="7" class="empty-note">此範圍沒有資料</td></tr>';
+    document.getElementById('custTableBody').innerHTML = '<tr><td colspan="10" class="empty-note">此範圍沒有資料</td></tr>';
     document.getElementById('channelBars').innerHTML = '<p class="empty-note">此範圍沒有資料</p>';
     return;
   }
@@ -3030,6 +3220,11 @@ function renderCustomers(){
       '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
       '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
       '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '" data-l="成長率">' + pctSigned(r.growth) + '</td>' +
+      (IDX.hasQty
+        ? '<td class="num" data-l="去年數量">' + (r.q1 ? nf.format(r.q1) : '—') + '</td>' +
+          '<td class="num" data-l="今年數量">' + (r.q2 ? nf.format(r.q2) : '—') + '</td>' +
+          '<td class="num ' + (r.qGrowth == null ? '' : r.qGrowth >= 0 ? 'growth up' : 'growth down') + '" data-l="數量成長">' + pctSigned(r.qGrowth) + '</td>'
+        : '') +
       '<td class="num" data-l="累計佔比">' + pct(r.cumShare, 0) + '</td>' +
     '</tr>';
     return main + (open ? customerDetailHtml(r) : '');
