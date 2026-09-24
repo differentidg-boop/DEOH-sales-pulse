@@ -763,7 +763,7 @@
           <table class="rwd">
             <thead><tr>
               <th class="num">#</th><th>客戶名稱</th><th>通路別</th>
-              <th class="num">去年 YTD</th><th class="num">今年 YTD</th><th class="num">成長率</th>
+              <th class="num amt-col">去年 YTD</th><th class="num amt-col">今年 YTD</th><th class="num amt-col">成長率</th>
               <th class="num qty-col">去年數量</th><th class="num qty-col">今年數量</th><th class="num qty-col">數量成長</th>
               <th class="num">累計佔比</th>
             </tr></thead>
@@ -3232,8 +3232,12 @@ function renderCustTools(){
 function renderCustomers(){
   renderCustSortPills();
   renderCustTools();
-  // 舊版存下來的資料沒有數量欄位，這時候把數量欄整個藏起來，不要留一排「—」
-  Array.prototype.forEach.call(document.querySelectorAll('th.qty-col'), function(th){ th.hidden = !IDX.hasQty; });
+  // 一次只顯示一組數字：選金額排序就只看金額、選數量排序就只看數量。
+  // 兩組一起排會把列擠得太寬，手機上客戶名稱會被推到下一行，很難掃。
+  // （舊版存下來、沒有數量欄位的資料，數量欄一律藏起來，不留一排「—」）
+  var qtyView = IDX.hasQty && (state.custSort === 'qty' || state.custSort === 'qtyPrior');
+  Array.prototype.forEach.call(document.querySelectorAll('th.qty-col'), function(th){ th.hidden = !qtyView; });
+  Array.prototype.forEach.call(document.querySelectorAll('th.amt-col'), function(th){ th.hidden = qtyView; });
   var ids = scopeIds();
   var res = customerRows(ids, state.setMonth, 20);
   document.getElementById('custScopeHint').textContent =
@@ -3291,14 +3295,13 @@ function renderCustomers(){
       '<td class="num rank-cell" data-l="排名">' + r.rank + '</td>' +
       '<td class="name"><span class="rank-inline">' + r.rank + '.</span> <span class="disclose">' + (open ? '▾' : '▸') + '</span>' + esc(r.name) + tagHtml + '</td>' +
       '<td data-l="通路" title="原始標籤：' + esc(r.rawChannel || '—') + '">' + (CHANNEL_SHORT[r.channel] || r.channel) + '</td>' +
-      '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
-      '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
-      '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '" data-l="成長率">' + pctSigned(r.growth) + '</td>' +
-      (IDX.hasQty
+      (qtyView
         ? '<td class="num" data-l="去年數量">' + (r.q1 ? nf.format(r.q1) : '—') + '</td>' +
           '<td class="num" data-l="今年數量">' + (r.q2 ? nf.format(r.q2) : '—') + '</td>' +
           '<td class="num ' + (r.qGrowth == null ? '' : r.qGrowth >= 0 ? 'growth up' : 'growth down') + '" data-l="數量成長">' + pctSigned(r.qGrowth) + '</td>'
-        : '') +
+        : '<td class="num" data-l="去年 YTD">' + compact(r.y1) + '</td>' +
+          '<td class="num" data-l="今年 YTD">' + compact(r.y2) + '</td>' +
+          '<td class="num ' + (r.growth == null ? '' : r.growth >= 0 ? 'growth up' : 'growth down') + '" data-l="成長率">' + pctSigned(r.growth) + '</td>') +
       '<td class="num" data-l="累計佔比">' + pct(r.cumShare, 0) + '</td>' +
     '</tr>';
     return main + (open ? customerDetailHtml(r) : '');
