@@ -109,6 +109,7 @@
   .upload-status.ok{ color:var(--good); }
   .upload-status.warn{ color:var(--watch); }
   .need-requp{ display:inline-block; margin-top:6px; color:var(--watch); line-height:1.7; }
+  .audit-ok{ display:inline-block; margin-top:6px; color:var(--good); line-height:1.7; font-size:11.5px; }
   .need-requp b{ color:var(--watch); }
   .tools-note{ font-size:11px; color:var(--watch); flex:1 1 100%; line-height:1.6; }
 
@@ -166,6 +167,8 @@
   .global-strip .gs-item b{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; font-size:14px; font-weight:600; color:var(--ink); }
   .global-strip .gs-item b.good{ color:var(--good); } .global-strip .gs-item b.critical{ color:var(--critical); }
   .global-strip .gs-note{ margin-left:auto; font-size:11px; color:var(--ink-faint); }
+  .global-strip .gs-warn{ flex:1 1 100%; font-size:11.5px; color:var(--critical); font-weight:600; line-height:1.6;
+    border-top:1px dashed var(--border); padding-top:6px; margin-top:2px; }
   .btn.tiny{ font-size:11.5px; padding:3px 10px; }
 
   /* 收合後的 KPI：跟篩選列黏在一起釘在畫面上方，往下看客戶/缺口時
@@ -1421,6 +1424,9 @@ function monthKeyFrom(row, idx){
 function makeCollector(){
   var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
       agg = {}, aggQ = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
+  var aggRows = {};        // 目標表裡被判定為「小計列」而略過的列名，上傳後會顯示出來讓人核對
+  var audits = [];         // 目標對帳結果（與檔案自己的小計列逐月核對）
+  var newNames = {};       // 目標表有、但銷售資料沒出現過的品項（可能是新品，也可能是漏抓的小計列）
   // 單價要在「逐筆」階段統計：彙總之後贈品列（金額 0、數量 >0）會把單價拉低，
   // 那是搭贈後的實質單價，不是我們要的「一盒開多少錢」。這裡只採計金額與數量都 >0 的列。
   // 依年度分開統計，最後只取「最新一年」的單價：去年的價格帶跟今年常常不一樣，
@@ -1437,6 +1443,12 @@ function makeCollector(){
   }
   return {
     products: products, customers: customers, targets: targets,
+    noteAgg: function(name){ var n = String(name||'').trim(); if (n) aggRows[n] = 1; },
+    aggNames: function(){ return Object.keys(aggRows); },
+    noteAudit: function(a){ if (a) audits.push(a); },
+    audits: function(){ return audits; },
+    noteNew: function(name){ var n = String(name||'').trim(); if (n) newNames[n] = 1; },
+    newNames: function(){ return Object.keys(newNames); },
     /** 依「正規化後的品項名稱」找既有品項（處理全形/半形破折號、大小寫、空白差異） */
     findPi: function(name){ var k = normName(name); return byNorm[k] == null ? -1 : byNorm[k]; },
     pi: function(name, category){
@@ -1656,31 +1668,88 @@ function ingestProductMonthlySheet(rows, col, curYear){
     if (m >= 1 && m <= 12) monthCols.push([c, m]);
   }
   if (monthCols.length < 6) return 0;
-  var n = 0;
+  // 先整張掃一遍再決定要收哪幾列：彙總列除了靠名稱認，還有第二道保險 ——
+  // 「銷售資料裡沒見過這個品項，金額卻大到佔整張表兩成以上」的，幾乎一定是小計列。
+  function readVals(row){
+    var vals = [], sum = 0;
+    monthCols.forEach(function(mc){
+      var v = parseFloat(String(row[mc[0]] != null ? row[mc[0]] : '').replace(/,/g, '').trim());
+      if (!isFinite(v) || v <= 0) return;
+      v = Math.round(v); vals.push([mc[1], v]); sum += v;
+    });
+    return { vals:vals, sum:sum };
+  }
+  var cand = [], aggs = [];
   for (var i = hdrRow + 1; i < rows.length; i++){
     var row = rows[i] || [];
     var name = String(row[0] || '').trim();
     var src = String(row[1] || '').trim().toUpperCase();
-    if (!name || (src !== 'DED' && src !== 'GE')) continue;
-    // 這張表除了品項，還有「DED ALL」「GE(NVS) ALL」「P1 視舒坦系列 Systane ALL」等
-    // 小計列，Source 欄一樣寫 DED/GE，照單全收會讓目標被重複加 2~3 倍（達成率被稀釋成 1/3）。
+    if (!name) continue;
+    var rv = readVals(row);
+    if (!rv.sum) continue;
+    // Source 欄不是 DED/GE 的（例如「總計 ALL (DED+GE)」寫 ALL）一律只當對帳基準
+    if (src !== 'DED' && src !== 'GE'){ aggs.push({ name:name, vals:rv.vals, sum:rv.sum }); continue; }
     var pi = col.findPi(name);
-    if (pi < 0){
-      if (AGG_ROW_RE.test(name) || name.length < 3) continue;
-      pi = col.pi(name, src);
+    if (pi < 0 && (isAggRow(name) || name.length < 3)){
+      col.noteAgg(name); aggs.push({ name:name, vals:rv.vals, sum:rv.sum }); continue;
     }
-    monthCols.forEach(function(mc){
-      var v = parseFloat(String(row[mc[0]] != null ? row[mc[0]] : '').replace(/,/g, '').trim());
-      if (!isFinite(v) || v <= 0) return;
-      col.targets.push([pi, targetYear, mc[1], Math.round(v)]);
-      n++;
-    });
+    cand.push({ name:name, src:src, pi:pi, vals:rv.vals, sum:rv.sum });
   }
+  var known = cand.reduce(function(a, c){ return a + (c.pi >= 0 ? c.sum : 0); }, 0);
+  var n = 0, kept = [];
+  cand.forEach(function(c){
+    if (c.pi < 0 && known > 0 && c.sum >= known * 0.2){
+      col.noteAgg(c.name); aggs.push({ name:c.name, vals:c.vals, sum:c.sum }); return;
+    }
+    var pi = c.pi >= 0 ? c.pi : col.pi(c.name, c.src);
+    if (c.pi < 0) col.noteNew(c.name);
+    kept.push(c);
+    c.vals.forEach(function(v){ col.targets.push([pi, targetYear, v[0], v[1]]); n++; });
+  });
+  col.noteAudit(auditTargets(kept, aggs, targetYear));
   return n;
 }
 
-/** 這一列是不是彙總列（DED ALL / NVS ALL / Priority 1… / ALL / 小計 等），不是真正的品項 */
-var AGG_ROW_RE = /(^|\s)(all|total|subtotal|priority\s*\d*)(\s|$)|合計|總計|小計|全部/i;
+/** 目標自我對帳：檔案裡本來就有「總計 ALL」這種小計列，剛好可以當成獨立驗算基準。
+    我們收下來的品項目標，逐月加起來必須等於檔案裡最大的那一列小計（誤差 0.5% 內）。
+      － 收多了（小計列被當成品項）→ 我們的總和 > 小計列   ← 2026/09 那次的錯
+      － 收少了（真品項被誤判成小計）→ 我們的總和 < 小計列
+    兩種都會被抓到，並在上傳訊息裡用紅字講清楚是哪個月、差多少。*/
+function auditTargets(kept, aggs, year){
+  if (!kept.length) return null;
+  if (!aggs.length) return { year:year, noBase:true, bad:[] };   // 這份目標表沒有合計列可對帳
+  var mine = {}, base = {}, monthsSeen = {};
+  kept.forEach(function(c){ c.vals.forEach(function(v){ mine[v[0]] = (mine[v[0]] || 0) + v[1]; monthsSeen[v[0]] = 1; }); });
+  // 基準取「總額最大」的那一列小計＝全公司合計列
+  var grand = aggs.slice().sort(function(a,b){ return b.sum - a.sum; })[0];
+  grand.vals.forEach(function(v){ base[v[0]] = (base[v[0]] || 0) + v[1]; monthsSeen[v[0]] = 1; });
+  var bad = [], myTot = 0, baseTot = 0;
+  Object.keys(monthsSeen).map(Number).sort(function(a,b){ return a-b; }).forEach(function(m){
+    var a = mine[m] || 0, b = base[m] || 0;
+    myTot += a; baseTot += b;
+    if (!b) return;                                   // 小計列那個月空白就不比
+    if (Math.abs(a - b) > Math.max(b * 0.005, 1)) bad.push({ m:m, mine:a, base:b });
+  });
+  return { year:year, ref:grand.name, mine:myTot, base:baseTot, bad:bad };
+}
+
+/** 這一列是不是彙總列（DED ALL / GE(NVS) ALL / P1 …（自費）ALL / 小計 等），不是真正的品項。
+    以前用 /(^|\s)all(\s|$)/ 比對，碰到「P1 視舒坦系列 Systane（自費）ALL」就漏掉了 ——
+    ALL 前面是全形右括號而不是空白。彙總列一旦被當成品項收進來，目標會被重複加一遍，
+    達成率就會整個被稀釋（2026/09 那次就是 P1+P2 兩列漏進來，目標多了 1,523 萬）。
+    所以改成先把所有標點都換成空白再比對，並且「結尾是 ALL／總計」一律視為彙總列。 */
+var AGG_WORD_RE = /(^| )(all|total|totals|subtotal|sum|priority ?\d*)( |$)/i;
+var AGG_CJK_RE  = /合計|總計|小計|全部|總和|加總|累計|總額|整體|彙總|匯總/;
+var AGG_TAIL_RE = /(^| )(all|total)$/i;
+function isAggRow(raw){
+  var n = String(raw == null ? '' : raw).trim();
+  if (!n) return true;
+  if (AGG_CJK_RE.test(n)) return true;
+  // 標點一律當空白：「（自費）ALL」→「 自費 ALL 」，這樣 ALL 才切得出來
+  var t = n.replace(/[^0-9A-Za-z\u4e00-\u9fff]+/g, ' ').trim();
+  return AGG_WORD_RE.test(' ' + t + ' ') || AGG_TAIL_RE.test(t);
+}
+var AGG_ROW_RE = { test: function(x){ return isAggRow(x); } };   // 舊呼叫點沿用
 
 /** 這張分頁看起來像不像目標表？分頁叫什麼名字都沒關係，看內容認：
       ① 前 12 列裡有一列出現 6 個以上「202601」這種六位數月份標題（Target&Sales 那種矩陣表）
@@ -1756,8 +1825,9 @@ function ingestTargetSheet(rows, col){
     // 這種就要照樣建立品項，合併時會依名稱對回既有資料。
     var pi = col.findPi(name);
     if (pi < 0){
-      if (AGG_ROW_RE.test(name) || name.length < 3){ skippedAgg++; continue; }
+      if (isAggRow(name) || name.length < 3){ skippedAgg++; col.noteAgg(name); continue; }
       pi = col.pi(name, /SYSTANE|TEARS|DURATEARS/i.test(name) ? 'DED' : 'GE');
+      col.noteNew(name);
     }
     targetCols.forEach(function(mc){
       var raw = String(row[mc[0]] != null ? row[mc[0]] : '').replace(/,/g, '').trim();
@@ -1848,7 +1918,8 @@ async function buildDatasetFromFiles(files, onProgress){
   return {
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
     products: col.products, customers: col.customers, facts: col.finish(),
-    targets: col.targets, prices: prices
+    targets: col.targets, prices: prices, aggSkipped: col.aggNames(), audits: col.audits(),
+    targetOnlyNames: col.newNames(), hadSales: totalUsed > 0
   };
 }
 
@@ -2771,7 +2842,31 @@ function renderGlobalStrip(){
     '<span class="gs-item">YTD 實績 ' + num(compact(g.actual)) + '<span>／目標 ' + compact(g.target) + '</span></span>' +
     '<span class="gs-item">YoY ' + num(pctSigned(g.yoy), yCls) + '</span>' +
     '<span class="gs-item">第 ' + m + ' 月 ' + num(pct(gm.achievement, 0)) + '</span>' +
-    '<span class="gs-note">' + (scoped ? '下方 KPI／趨勢／缺口／Top20 已鑽到：' + scopeLabel() : '下方即為全產品業績，可用上方篩選挑品項分析') + '</span>';
+    '<span class="gs-note">' + (scoped ? '下方 KPI／趨勢／缺口／Top20 已鑽到：' + scopeLabel() : '下方即為全產品業績，可用上方篩選挑品項分析') + '</span>' +
+    missingTargetNote();
+}
+
+/** 有業績、卻沒有目標的月份（例如第四季目標還沒上傳）：
+    YTD 達成率的分母會少掉那幾個月，數字會虛高。這種情況一定要講出來。 */
+function missingTargetMonths(){
+  var out = [];
+  for (var m = 1; m <= state.setMonth; m++){
+    var sales = 0, tgt = 0;
+    IDX.products.forEach(function(p){
+      if (p.excluded && !state.includeExcluded) return;
+      sales += IDX.prodMonthly[p.i].cur[m-1];
+      tgt += IDX.prodTarget[p.i][m-1];
+    });
+    if (sales > 0 && tgt <= 0) out.push(m);
+  }
+  return out;
+}
+function missingTargetNote(){
+  if (DATA.kind !== 'uploaded') return '';
+  var miss = missingTargetMonths();
+  if (!miss.length) return '';
+  return '<span class="gs-warn">⚠ 第 ' + miss.join('、') + ' 月有業績但<b>沒有目標</b>，' +
+         'YTD 達成率的分母少了這幾個月會偏高；請上傳含這幾個月目標的檔案。</span>';
 }
 
 /** 收合後釘在篩選列下方的迷你 KPI 條：六個指標跟著「目前選的範圍」走，
@@ -3987,6 +4082,13 @@ function renderSourceBar(){
     ? '把每月的原始檔直接拖到這裡，或按右邊「上傳原始檔」：支援 <code>.xlsx</code> 與 <code>.csv</code>，會自動找出 <code>DED資料</code>、<code>GE資料</code>、<code>Target&amp;Sales</code> 三張表，整份儀表板即時重算。檔案只在你自己的瀏覽器裡解析，不會上傳到任何地方。'
     : '最後更新：' + new Date(DATA.updatedAt).toLocaleString('zh-TW') +
       '｜下個月只要再拖一次新的原始檔覆蓋即可。資料記在<b>這台電腦的瀏覽器</b>裡，同一個連結下次打開會自動帶出來；換電腦或清瀏覽器資料才需要重新上傳。' +
+      auditLine() +
+      ((DATA.aggCleaned && DATA.aggCleaned.length)
+        ? '<br><span class="need-requp">✔ 已自動修正：這份資料的目標裡混進了 ' + DATA.aggCleaned.length +
+          ' 個<b>小計列</b>（' + DATA.aggCleaned.slice(0, 3).map(esc).join('、') +
+          (DATA.aggCleaned.length > 3 ? ' 等' : '') + '），會讓目標被重複加、達成率被稀釋，現在已經排除。' +
+          '數字已經是對的，若想連品項清單一起清乾淨，把原始檔再上傳一次即可。</span>'
+        : '') +
       (IDX && !IDX.hasQty
         ? '<br><span class="need-requp">⚠ 這份資料<b>沒有讀到「數量」欄位</b>，所以「數量排序」與「缺口盒數」暫時看不到。' +
           '如果是舊版存下來的，把原始檔<b>再上傳一次</b>（同一份就可以，數字不會變）就會出現；' +
@@ -4036,7 +4138,57 @@ function render(){
    都會看到上傳者的數字。存在本機的話，同事打開同一個連結只會看到示範資料，
    可以直接上傳他自己的檔案 —— 等於 Excel 版「通用套版」的網頁版。 */
 
+/** 資料來源列上常駐的一行：目標有沒有對帳成功。
+    上傳訊息會被下一次操作蓋掉，但這一行會一直在，隨時打開都看得到。 */
+function auditLine(){
+  if (DATA.kind !== 'uploaded') return '';
+  var a = (DATA.audits || []).filter(function(x){ return x && x.base > 0; })[0];
+  if (!a) return '';
+  if (a.bad && a.bad.length){
+    return '<br><span class="need-requp">⚠ 目標對帳沒過：品項目標合計 ' + compact(a.mine) +
+           '，檔案裡的「' + esc(a.ref) + '」是 ' + compact(a.base) + '，兩邊對不起來，請先不要用這版數字。</span>';
+  }
+  return '<br><span class="audit-ok">✔ 目標已與檔案裡的「' + esc(a.ref) + '」逐月對帳：' +
+         a.year + ' 年目標合計 ' + compact(a.base) + '，完全相符。</span>';
+}
+
+/** 自我修復：舊版程式曾把目標表裡的小計列（例如「P1 視舒坦系列 Systane（自費）ALL」）
+    當成品項收進來，導致目標被重複加、達成率被稀釋。已經存在瀏覽器裡的資料沒辦法等人重傳，
+    所以每次載入時都把這種「名字是小計列」的目標直接丟掉，並記下來讓畫面提示一次。 */
+function sanitizeDataset(ds){
+  if (!ds || !ds.products || !ds.targets) return ds;
+  var bad = {}, names = [];
+  ds.products.forEach(function(p, i){
+    if (isAggRow(p[0])){ bad[i] = 1; names.push(p[0]); }
+  });
+  if (!names.length) return ds;
+  ds.targets = ds.targets.filter(function(t){ return !bad[t[0]]; });
+  var used = {};
+  ds.facts.forEach(function(f){ used[f[1]] = 1; });
+  ds.targets.forEach(function(t){ used[t[0]] = 1; });
+  // 沒有任何實績也沒有目標的假品項（就是那些小計列）直接從品項清單移除，索引要一起重編
+  var map = {}, prods = [];
+  ds.products.forEach(function(p, i){
+    if (bad[i] && !used[i]) return;
+    map[i] = prods.length; prods.push(p);
+  });
+  ds.facts = ds.facts.filter(function(f){ return map[f[1]] != null; })
+                     .map(function(f){ f = f.slice(); f[1] = map[f[1]]; return f; });
+  ds.targets = ds.targets.filter(function(t){ return map[t[0]] != null; })
+                         .map(function(t){ t = t.slice(); t[0] = map[t[0]]; return t; });
+  if (ds.prices) ds.prices = ds.prices.filter(function(pr){ return map[pr[0]] != null; })
+                                      .map(function(pr){ pr = pr.slice(); pr[0] = map[pr[0]]; return pr; });
+  ds.products = prods;
+  ds.aggCleaned = names;
+  return ds;
+}
+
 function setData(ds, keepMonth){
+  ds = sanitizeDataset(ds);
+  // 清掉舊資料裡的小計列之後，順手存回去，下次打開就不用再清一次
+  if (ds.aggCleaned && ds.aggCleaned.length && ds.kind === 'uploaded'){
+    try { persist(ds); } catch (e){}
+  }
   DATA = ds;
   IDX = buildIndex(ds);
   if (!keepMonth) state.setMonth = IDX.latestMonth;
@@ -4107,6 +4259,56 @@ async function handleFiles(files){
     } else {
       msg = '已更新：' + read + '，共 ' + months.length + ' 個月的資料。';
     }
+    // 目標表裡的小計列（DED ALL、P1 …（自費）ALL…）一定要排掉，否則目標會被重複加、
+    // 達成率被稀釋。把排掉的列名列出來，下次若表格改版、有漏抓的一眼就看得到。
+    var aggs = fresh.aggSkipped || [];
+    if (aggs.length){
+      msg += '（目標表已排除 ' + aggs.length + ' 個小計列：' + aggs.slice(0, 8).join('、') +
+             (aggs.length > 8 ? ' 等' : '') + '，避免目標被重複加總）';
+    }
+    // 目標對帳：跟檔案自己的合計列逐月核對，對得上才算數
+    var auds = fresh.audits || [], badAud = auds.filter(function(a){ return a && a.bad && a.bad.length; });
+    var okAud = auds.filter(function(a){ return a && (!a.bad || !a.bad.length) && a.base > 0; });
+    var noBase = auds.filter(function(a){ return a && a.noBase; });
+    if (noBase.length && !okAud.length){
+      msg += '（這份目標表裡沒有合計列可以對帳，已改用「和上次的目標比對」的方式檢查）';
+    }
+    var onlyT = (fresh.hadSales && fresh.targetOnlyNames) ? fresh.targetOnlyNames : [];
+    if (onlyT.length){
+      msg += '⚠ 目標表裡有 ' + onlyT.length + ' 個品項在這次的銷售資料裡完全沒出現過：' +
+             onlyT.slice(0, 6).join('、') + (onlyT.length > 6 ? ' 等' : '') +
+             '。如果這不是新品，很可能是小計列被算成品項了，請把這段訊息傳給我。';
+    }
+    // 沒有合計列可對帳時的備援：同一個月的目標如果突然變動超過 ±25%，一定要講出來
+    var tShift = [];
+    if (hasOld){
+      var oldT = {}, newT = {};
+      (DATA.targets || []).forEach(function(t){ oldT[t[1] + '-' + t[2]] = (oldT[t[1] + '-' + t[2]] || 0) + t[3]; });
+      (fresh.targets || []).forEach(function(t){ newT[t[1] + '-' + t[2]] = (newT[t[1] + '-' + t[2]] || 0) + t[3]; });
+      Object.keys(newT).forEach(function(k){
+        var a = oldT[k] || 0, b = newT[k];
+        if (a > 0 && Math.abs(b - a) > a * 0.25) tShift.push({ k:k, before:a, after:b });
+      });
+    }
+    if (tShift.length){
+      msg += '⚠ 目標有大幅變動：' + tShift.slice(0, 6).map(function(x){
+        var q = x.k.split('-');
+        return q[0] + '/' + q[1] + ' ' + compact(x.before) + ' → ' + compact(x.after);
+      }).join('、') + (tShift.length > 6 ? ' 等 ' + tShift.length + ' 個月' : '') +
+      '。如果你沒有調整過目標，代表目標表被多算或少算了，請先不要用這版數字。';
+    }
+    if (okAud.length){
+      msg += '（已與檔案裡的「' + okAud[0].ref + '」逐月對帳，' + okAud[0].year + ' 年目標合計 ' +
+             compact(okAud[0].base) + '，完全相符 ✔）';
+    }
+    if (badAud.length){
+      var a = badAud[0];
+      msg += '⚠ 目標對帳沒過：我算出來的 ' + a.year + ' 年目標合計是 ' + compact(a.mine) +
+             '，但檔案裡的「' + a.ref + '」是 ' + compact(a.base) + '（' +
+             a.bad.slice(0, 4).map(function(x){ return x.m + '月 ' + compact(x.mine) + ' vs ' + compact(x.base); }).join('、') +
+             (a.bad.length > 4 ? ' 等 ' + a.bad.length + ' 個月' : '') +
+             '）。請把這段訊息傳給我，先不要拿這版數字報告。';
+    }
     if (shrink.length){
       msg += '⚠ 注意：' + shrink.map(function(x){
         var q = x.k.split('-');
@@ -4115,7 +4317,8 @@ async function handleFiles(files){
       '如果不是故意的，請改用該月的完整檔再上傳一次（會整個換新，不會重複計算）。';
     }
     status(msg + (saved ? '已記在這台電腦的瀏覽器，下次打開同一個連結會自動帶出來。'
-                        : '（瀏覽器無法儲存，關掉頁面後需要重新上傳）'), shrink.length ? 'warn' : 'ok');
+                        : '（瀏覽器無法儲存，關掉頁面後需要重新上傳）'),
+           badAud.length ? 'error' : ((shrink.length || tShift.length || onlyT.length) ? 'warn' : 'ok'));
   } catch(e){
     console.error(e);
     status('讀取失敗：' + (e && e.message ? e.message : e), 'error');
