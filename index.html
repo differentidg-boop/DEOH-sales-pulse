@@ -1493,8 +1493,8 @@ function monthKeyFrom(row, idx){
 function makeCollector(){
   var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
       agg = {}, aggQ = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
-  var ordSets = {};        // 每個(客戶,品項,年,月)出現過哪些出貨單號（新品第二筆訂單要用）
-  var ordCols = {};         // 實際採用的單號欄位抬頭，顯示在畫面上讓人核對
+  var ordSets = {};        // 每個(客戶,品項,年,月)出現過哪些發票號碼（新品第二筆訂單要用）
+  var ordCols = {};         // 實際採用的發票欄位抬頭，顯示在畫面上讓人核對
   var aggRows = {};        // 目標表裡被判定為「小計列」而略過的列名，上傳後會顯示出來讓人核對
   var audits = [];         // 目標對帳結果（與檔案自己的小計列逐月核對）
   var newNames = {};       // 目標表有、但銷售資料沒出現過的品項（可能是新品，也可能是漏抓的小計列）
@@ -1626,7 +1626,7 @@ function makeCollector(){
         if (!v && !q) return;
         var p = k.split('|');
         var o = ordU[k] ? Object.keys(ordU[k]).length : 0;
-        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q, o ]);   // 第 6 欄＝數量、第 7 欄＝不同出貨單數
+        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q, o ]);   // 第 6 欄＝數量、第 7 欄＝不同發票張數
       });
       return facts;
     }
@@ -1661,17 +1661,18 @@ function probeQtyCol(kind, h, idx, rowIter){
   return num / seen >= 0.6 ? c : -1;
 }
 
-/* 出貨單號（第二筆訂單要靠它認）：
-     DED資料＝「Billing document」（O 欄，index 14）
-     GE資料 ＝「Billing Document」／「GUI Number」／「Order Number」
-   新品獎金規則是「同一家、同一品項要有兩張不同的出貨單」，所以不能只看月份，
-   必須逐列記下單號再去重。抬頭抓不到就用位置備援，而且一定要抽樣驗證
-   （那一欄要有六成以上的列是有值的），抓錯寧可不要，畫面會改用「跨月」的寬鬆算法並註明。*/
+/* 發票號碼（第二筆訂單要靠它認）：
+     DED資料＝「Local Reference」（P 欄，index 15）
+     GE資料 ＝「GUI Number」（F 欄，index 5）
+   公司認定的是發票，不是 SAP 的 billing document —— 實測這份檔案有 65 張發票
+   對應到多張 billing document，用 billing document 會把同一張發票拆成兩筆。
+   抬頭抓不到就用位置備援，而且一定要抽樣驗證（那一欄要有六成以上的列有值、
+   且不是整欄同一個值），抓錯寧可不要，畫面會改用「跨月」的寬鬆算法並註明。*/
 var ORD_NAMES = {
-  DED: ['Billing document','Billing Document','出貨單號','發票號碼','Invoice','Invoice No.','Billing Doc.'],
-  GE:  ['Billing Document','Billing document','GUI Number','Invoice Number','發票號碼','Order Number']
+  DED: ['Local Reference','發票號碼','Invoice','Invoice No.','Billing document','Billing Document'],
+  GE:  ['GUI Number','發票號碼','Invoice Number','Billing Document','Billing document']
 };
-var ORD_POS = { DED: 14, GE: 47 };
+var ORD_POS = { DED: 15, GE: 5 };
 function probeOrdCol(kind, h, idx, rowIter){
   var cands = [];
   ORD_NAMES[kind].forEach(function(n){ var k = h.indexOf(n); if (k >= 0 && cands.indexOf(k) < 0) cands.push(k); });
@@ -1753,8 +1754,8 @@ function ingestSalesRows(kind, header, rowIter, col){
     var pi = col.pi(pname, kind);
     // 單號前面加上來源代號，DED 與 GE 的流水號萬一撞號也不會被當成同一張單
     var ord = idx.ord >= 0 ? String(row[idx.ord] == null ? '' : row[idx.ord]).trim() : '';
-    // 退貨／沖銷（金額為負）的單子不算一筆訂單 —— 新品獎金算的是「進貨」，
-    // 不能讓一張退貨單幫客戶湊到第二筆。
+    // 退貨／沖銷（金額為負）的發票不算一筆訂單 —— 新品獎金算的是「進貨」，
+    // 不能讓一張退貨發票幫客戶湊到第二筆。
     col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty, (ord && amt > 0) ? kind + ':' + ord : '');
     col.notePrice(pi, channelOf(rawChan), amt, qty, ym[0]);
     used++;
@@ -4055,7 +4056,7 @@ function focusCards(){
       key:'f-np', warn: np.waiting.length > 0, npCfg:true,
       label:'② MDPF 第二單達成率（以客戶計，一家只算一次）',
       num: pct(npRate, 0), unit:'（' + np.done.length + ' / ' + np.opened + ' 家）',
-      sub: '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的出貨單；' +
+      sub: '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的<b>發票</b>；' +
            'Ultra 一張＋HA 一張不算）；目前計入 ' +
            npChans().map(function(c){ return SUBCHAN_LABEL[c] || c; }).join('、') +
            '；另有 ' + np.none.length + ' 家尚未開張' +
@@ -4074,11 +4075,11 @@ function focusCards(){
           '，任何一支補第二張單就算。'
         : '已開張的客戶都成立了。') +
         (np.bothCount ? ' 其中 <b>' + np.bothCount + ' 家</b>兩支都已重複下單（獎金仍只計一次）。' : '') +
-        (IDX.hasOrders ? '' : ' <b class="down">這份資料沒有出貨單號</b>，目前用「下單月份數」保守認定，同月兩張單會被算成一筆；原始檔再上傳一次就會改用單號。'),
+        (IDX.hasOrders ? '' : ' <b class="down">這份資料沒有發票號碼</b>，目前用「下單月份數」保守認定，同月兩張發票會被算成一筆；原始檔再上傳一次就會改用發票號。'),
       expand: { key:'f-np-wait', label:'還沒成立名單（' + np.waiting.length + '）', shut:'收合名單',
                 html: npCustList(np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單') },
       expand2:{ key:'f-np-done', label:'已成立名單（' + np.done.length + '）', shut:'收合名單',
-                html: npCustList(np.done, '已成立（任一支 MDPF 已有兩張不同出貨單，粗體就是達標的那一支）') }
+                html: npCustList(np.done, '已成立（任一支 MDPF 已有兩張不同發票，粗體就是達標的那一支）') }
     });
   }
 
@@ -4431,7 +4432,7 @@ function npProducts(){
 }
 
 /** MDPF 獎金統計：以「客戶」為單位，一家只算一次。
-    成立條件＝任何一支 MDPF 有兩張以上不同的出貨單（Ultra 兩張、或 HA 兩張）；
+    成立條件＝任何一支 MDPF 有兩張以上不同的發票（Ultra 兩張、或 HA 兩張）；
     Ultra 一張＋HA 一張不算（必須同一支重複下單）。
     範圍＝診所＋門前藥局（可在卡片上調整），退貨沖銷不算開張。 */
 function npCustStats(){
@@ -4462,7 +4463,7 @@ function npCustStats(){
     }
     var items = Object.keys(o.per).map(function(k){
       var pp = o.per[k], mCount = Object.keys(pp.months).length;
-      // 有單號就用單號去重；沒有就退回「下單月數」當保守認定
+      // 有發票號就用發票去重；沒有就退回「下單月數」當保守認定
       pp.ord = IDX.hasOrders ? pp.orders : mCount;
       pp.months_n = mCount;
       pp.name = (pmap[pp.pi] || {}).name || '';
@@ -4492,7 +4493,7 @@ function npCustStats(){
 function npShort(name){
   return String(name || '').replace(/SYSTANE\s*/i, '').replace(/\s*10ML/i, '').replace(/ULTRA/i, 'Ultra');
 }
-/** 每家客戶的 MDPF 下單情形：一定要逐支列出張數，
+/** 每家客戶的 MDPF 下單情形：一定要逐支列出發票張數，
     才看得出來「Ultra 一張＋HA 一張」為什麼還不算達標。 */
 function npItemsText(items){
   if (!items.length) return '—';
@@ -4509,7 +4510,7 @@ function npCustList(rows, cap, kind){
     '<table class="dl-table"><thead><tr><th class="num">#</th><th>客戶名稱</th><th>通路</th>' +
     (kind === 'none'
       ? '<th class="num">今年全品項業績</th>'
-      : '<th>MDPF 下單情形' + (IDX.hasOrders ? '（出貨單數）' : '（下單月數）') + '</th>' +
+      : '<th>MDPF 下單情形' + (IDX.hasOrders ? '（發票張數）' : '（下單月數）') + '</th>' +
         '<th class="num">最近下單</th><th class="num">MDPF 金額</th>' + (showQty ? '<th class="num">數量</th>' : '')) +
     '</tr></thead><tbody>' + rows.map(function(r, i){
       return '<tr><td class="num">' + (i + 1) + '</td>' +
