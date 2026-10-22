@@ -394,6 +394,46 @@
   .tg-btn.on{ background:var(--accent-ded-soft); border-color:var(--accent-ded); color:var(--accent-ded); font-weight:600; }
   .tg-note{ font-size:10.5px; color:var(--ink-faint); flex:1 1 100%; }
 
+  /* 年底 Landing */
+  .land-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  @media (max-width:860px){ .land-grid{ grid-template-columns:1fr; } }
+  .land-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent-ded);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:15px 18px; }
+  .land-card.good{ border-left-color:var(--good); }
+  .land-card.watch{ border-left-color:var(--watch); }
+  .land-card.critical{ border-left-color:var(--critical); }
+  .land-card.need{ border-left-color:var(--ink-faint); }
+  .land-card .focus-sub b.good{ color:var(--good); } .land-card .focus-sub b.critical{ color:var(--critical); }
+  .land-card .focus-sub b.watch{ color:var(--watch); }
+  .land-card .up{ color:var(--good); font-weight:600; } .land-card .down{ color:var(--critical); font-weight:600; }
+  .land-rows{ margin-top:11px; padding-top:9px; border-top:1px solid var(--border); }
+  .land-row{ display:flex; align-items:baseline; gap:9px; font-size:12px; padding:3px 0; flex-wrap:wrap; }
+  .land-row .lr-k{ color:var(--ink-muted); flex:0 0 auto; }
+  .land-row .lr-v{ font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--ink); }
+  .land-row .lr-n{ color:var(--ink-faint); font-size:11px; margin-left:auto; }
+  .land-note{ font-size:11px; color:var(--ink-faint); line-height:1.7; margin:10px 0 0; }
+
+  /* MDPF 新品追蹤 */
+  .np-cfg{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:12px;
+    background:var(--surface); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); padding:9px 12px; }
+  .np-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:860px){ .np-grid{ grid-template-columns:1fr; } }
+  .np-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:var(--shadow); padding:15px 18px; }
+  .np-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .np-name{ font-family:'Manrope','Noto Sans TC',sans-serif; font-size:13.5px; font-weight:700; }
+  .np-nums{ display:flex; gap:10px; flex-wrap:wrap; }
+  .np-num{ flex:1 1 90px; background:var(--surface-2); border-radius:var(--radius-sm); padding:9px 11px; }
+  .np-num b{ display:block; font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600;
+    line-height:1.1; color:var(--ink); }
+  .np-num span{ font-size:10.5px; color:var(--ink-muted); line-height:1.45; display:block; margin-top:3px; }
+  .np-num.good b{ color:var(--good); } .np-num.watch b{ color:var(--watch); }
+  .np-bar{ height:6px; border-radius:99px; background:var(--surface-2); margin:11px 0 7px; overflow:hidden; }
+  .np-bar i{ display:block; height:100%; border-radius:99px; background:var(--good); }
+  .np-sub{ font-size:11.5px; color:var(--ink-muted); line-height:1.7; }
+  .np-sub b{ color:var(--ink); }
+  .np-list .dl-box{ margin-top:10px; }
+
   /* 洞察卡 */
   .insight-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
   .ins-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border-strong);
@@ -728,6 +768,22 @@
         <div class="insight-grid" id="insightGrid" hidden></div>
       </div>
     </div>
+  </section>
+
+  <section class="block" id="landingBlock">
+    <div class="block-head">
+      <h2>年底 Landing 預估</h2>
+      <div class="head-tools"><span class="hint" id="landingHint"></span></div>
+    </div>
+    <div id="landingBody"></div>
+  </section>
+
+  <section class="block" id="newProdBlock">
+    <div class="block-head">
+      <h2>MDPF 新品：開張與第二筆訂單</h2>
+      <div class="head-tools"><span class="hint" id="newProdHint"></span></div>
+    </div>
+    <div id="newProdBody"></div>
   </section>
 
   <section class="block">
@@ -1087,6 +1143,21 @@ function channelFromName(name){
   if (CHAIN_BRAND_RE.test(n)) return 'Chain';
   return null;
 }
+/* 子通路：DED 的 Customer classification 其實分得出「門前藥局（Retail）」，
+   只是平常報表把它併進診所看。新品獎金的計算範圍要把門前藥局單獨抓出來，
+   所以這裡依「判定依據」字串再細分一層；GE 檔沒有這個分法，只能落在一般診所。 */
+var SUBCHAN_LABEL = { Front:'門前藥局', Clinic:'診所', Hospital:'醫院', Independent:'獨立藥局', Chain:'連鎖藥局', Other:'其他' };
+function subChannelOf(channel, rawLabel, name){
+  var r = String(rawLabel || '');
+  if (/^Retail/.test(r)) return 'Front';
+  if (channel === 'Clinic'){
+    // 名稱看得出是藥局、但 DED 判定為診所通路的，就是門前藥局
+    if (/藥局|藥房/.test(String(name || ''))) return 'Front';
+    return 'Clinic';
+  }
+  return channel;
+}
+
 function channelOf(raw){
   var v = String(raw||'').trim();
   if (DED_CHANNEL[v]) return DED_CHANNEL[v];
@@ -1183,7 +1254,11 @@ function buildDemoDataset(){
       var parts = key.split('-'), yy = +parts[0], mm = +parts[1], total = monthTotals[key];
       eligible.forEach(function(ci, k){
         var amt = Math.round(total * weights[k] / wsum);
-        if (amt > 0) facts.push([ci, pi, yy, mm, amt]);
+        // 示範資料也給數量與出貨單數，新功能（數量排序、第二筆訂單）才看得到樣子
+        var u = PRICE_MAP[normName(p[0])];
+        var qty = u ? Math.max(1, Math.round(amt / u.use)) : Math.max(1, Math.round(amt / 200));
+        var ords = amt > 0 ? 1 + (rnd() < 0.35 ? 1 : 0) : 0;
+        if (amt > 0) facts.push([ci, pi, yy, mm, amt, qty, ords]);
       });
     });
   });
@@ -1424,6 +1499,8 @@ function monthKeyFrom(row, idx){
 function makeCollector(){
   var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
       agg = {}, aggQ = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
+  var ordSets = {};        // 每個(客戶,品項,年,月)出現過哪些出貨單號（新品第二筆訂單要用）
+  var ordCols = {};         // 實際採用的單號欄位抬頭，顯示在畫面上讓人核對
   var aggRows = {};        // 目標表裡被判定為「小計列」而略過的列名，上傳後會顯示出來讓人核對
   var audits = [];         // 目標對帳結果（與檔案自己的小計列逐月核對）
   var newNames = {};       // 目標表有、但銷售資料沒出現過的品項（可能是新品，也可能是漏抓的小計列）
@@ -1502,12 +1579,15 @@ function makeCollector(){
         c[1] = r.id; c[2] = r.raw;
       });
     },
-    add: function(ci, pi, y, m, amt, qty){
+    add: function(ci, pi, y, m, amt, qty, ordId){
       var k = ci + '|' + pi + '|' + y + '|' + m;
       agg[k] = (agg[k] || 0) + amt;
       aggQ[k] = (aggQ[k] || 0) + (qty || 0);
+      if (ordId){ (ordSets[k] || (ordSets[k] = {}))[ordId] = 1; }
       yearsSeen[y] = 1;
     },
+    noteOrdCol: function(kind, label){ ordCols[kind] = label; },
+    ordCols: function(){ return ordCols; },
     notePrice: notePrice,
     /** 每個品項的「診所最大宗單價」：診所交易裡出現最多支數的那個單價；
         診所沒有交易的品項就退而求其次用全通路。 */
@@ -1533,20 +1613,26 @@ function makeCollector(){
     },
     peekYears: function(){ return Object.keys(yearsSeen).map(Number); },
     finish: function(){
-      var sum = {}, sumQ = {};
+      var sum = {}, sumQ = {}, ordU = {};
       Object.keys(agg).forEach(function(k){
         var p = k.split('|');
         var ci = remap ? remap[+p[0]] : +p[0];      // 合併後客戶索引會變，這裡一起改寫
         var kk = ci + '|' + p[1] + '|' + p[2] + '|' + p[3];
         sum[kk] = (sum[kk] || 0) + agg[k];
         sumQ[kk] = (sumQ[kk] || 0) + (aggQ[k] || 0);
+        var set = ordSets[k];
+        if (set){
+          var u = ordU[kk] || (ordU[kk] = {});
+          Object.keys(set).forEach(function(d){ u[d] = 1; });
+        }
       });
       var facts = [];
       Object.keys(sum).forEach(function(k){
         var v = Math.round(sum[k]), q = Math.round(sumQ[k] || 0);
         if (!v && !q) return;
         var p = k.split('|');
-        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q ]);   // 第 6 欄＝數量
+        var o = ordU[k] ? Object.keys(ordU[k]).length : 0;
+        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q, o ]);   // 第 6 欄＝數量、第 7 欄＝不同出貨單數
       });
       return facts;
     }
@@ -1579,6 +1665,44 @@ function probeQtyCol(kind, h, idx, rowIter){
   } catch (e){ return -1; }
   if (seen < 5) return -1;
   return num / seen >= 0.6 ? c : -1;
+}
+
+/* 出貨單號（第二筆訂單要靠它認）：
+     DED資料＝「Billing document」（O 欄，index 14）
+     GE資料 ＝「Billing Document」／「GUI Number」／「Order Number」
+   新品獎金規則是「同一家、同一品項要有兩張不同的出貨單」，所以不能只看月份，
+   必須逐列記下單號再去重。抬頭抓不到就用位置備援，而且一定要抽樣驗證
+   （那一欄要有六成以上的列是有值的），抓錯寧可不要，畫面會改用「跨月」的寬鬆算法並註明。*/
+var ORD_NAMES = {
+  DED: ['Billing document','Billing Document','出貨單號','發票號碼','Invoice','Invoice No.','Billing Doc.'],
+  GE:  ['Billing Document','Billing document','GUI Number','Invoice Number','發票號碼','Order Number']
+};
+var ORD_POS = { DED: 14, GE: 47 };
+function probeOrdCol(kind, h, idx, rowIter){
+  var cands = [];
+  ORD_NAMES[kind].forEach(function(n){ var k = h.indexOf(n); if (k >= 0 && cands.indexOf(k) < 0) cands.push(k); });
+  var pos = ORD_POS[kind];
+  if (pos != null && cands.indexOf(pos) < 0) cands.push(pos);
+  var taken = [idx.cust, idx.prod, idx.amt, idx.qty, idx.chan, idx.mk, idx.year, idx.period];
+  for (var i = 0; i < cands.length; i++){
+    var c = cands[i];
+    if (taken.indexOf(c) >= 0) continue;
+    var seen = 0, filled = 0, uniq = {};
+    try {
+      rowIter(function(row){
+        if (seen >= 400) return;
+        var a = parseFloat(String(row[idx.amt] != null ? row[idx.amt] : '').replace(/,/g, ''));
+        if (!isFinite(a) || a === 0) return;
+        seen++;
+        var v = String(row[c] == null ? '' : row[c]).trim();
+        if (v){ filled++; uniq[v] = 1; }
+      });
+    } catch (e){ continue; }
+    if (seen < 5) continue;
+    // 要夠滿，而且不能整欄都是同一個值（那就不是單號）
+    if (filled / seen >= 0.6 && Object.keys(uniq).length > Math.min(3, seen)) return c;
+  }
+  return -1;
 }
 
 function ingestSalesRows(kind, header, rowIter, col){
@@ -1617,6 +1741,8 @@ function ingestSalesRows(kind, header, rowIter, col){
   if (idx.cust < 0 || idx.prod < 0 || idx.amt < 0) throw new Error('「' + kind + '」表缺少必要欄位（客戶／品項／金額）');
   // 抬頭抓不到數量欄時，退回用固定欄位位置（DED＝AI 欄、GE＝N 欄）並驗證內容
   if (idx.qty < 0) idx.qty = probeQtyCol(kind, h, idx, rowIter);
+  idx.ord = probeOrdCol(kind, h, idx, rowIter);
+  if (idx.ord >= 0) col.noteOrdCol(kind, h[idx.ord] || ('第 ' + (idx.ord + 1) + ' 欄'));
   var used = 0, skipped = 0, scanned = 0;
   rowIter(function(row){
     scanned++;
@@ -1631,7 +1757,9 @@ function ingestSalesRows(kind, header, rowIter, col){
     if (!pname || !cname){ skipped++; return; }
     var rawChan = idx.chan >= 0 ? row[idx.chan] : '';
     var pi = col.pi(pname, kind);
-    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty);
+    // 單號前面加上來源代號，DED 與 GE 的流水號萬一撞號也不會被當成同一張單
+    var ord = idx.ord >= 0 ? String(row[idx.ord] == null ? '' : row[idx.ord]).trim() : '';
+    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty, ord ? kind + ':' + ord : '');
     col.notePrice(pi, channelOf(rawChan), amt, qty, ym[0]);
     used++;
   });
@@ -1919,6 +2047,7 @@ async function buildDatasetFromFiles(files, onProgress){
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
     products: col.products, customers: col.customers, facts: col.finish(),
     targets: col.targets, prices: prices, aggSkipped: col.aggNames(), audits: col.audits(),
+    ordCols: col.ordCols(),
     targetOnlyNames: col.newNames(), hadSales: totalUsed > 0
   };
 }
@@ -1948,8 +2077,8 @@ function mergeDatasets(oldDs, newDs){
       var c = ds.customers[f[0]], p = ds.products[f[1]];
       if (!c || !p) return;
       var k = cid(c) + '|' + pid(p[0], p[1]) + '|' + f[2] + '|' + f[3];
-      var o = agg[k] || (agg[k] = [0, 0]);
-      o[0] += f[4]; o[1] += (f[5] || 0);
+      var o = agg[k] || (agg[k] = [0, 0, 0]);
+      o[0] += f[4]; o[1] += (f[5] || 0); o[2] += (f[6] || 0);
     });
   }
   absorb(newDs, function(){ return true; });                                  // 新檔全部收下
@@ -1957,9 +2086,9 @@ function mergeDatasets(oldDs, newDs){
 
   var facts = [];
   Object.keys(agg).forEach(function(k){
-    var v = Math.round(agg[k][0]), qq = Math.round(agg[k][1]);
+    var v = Math.round(agg[k][0]), qq = Math.round(agg[k][1]), oo = Math.round(agg[k][2] || 0);
     if (!v && !qq) return;
-    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v, qq ]);
+    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v, qq, oo ]);
   });
 
   // 目標：新檔有帶目標就用新的，否則沿用舊的（都以品項名稱對應，索引會變）
@@ -2047,7 +2176,9 @@ function buildIndex(ds){
              ord: productOrder(p[0]), excluded: isExcludedProduct(p[0]) };
   });
   var customers = ds.customers.map(function(c, i){
-    return { i:i, name:c[0], channel: channelOf(c[1]), rawChannel: c[2] || c[1] || '',
+    var ch = channelOf(c[1]), raw = c[2] || c[1] || '';
+    return { i:i, name:c[0], channel: ch, rawChannel: raw,
+             sub: subChannelOf(ch, raw, c[0]),
              rawNames: (c[3] && c[3].length) ? c[3] : [c[0]] };
   });
 
@@ -2093,7 +2224,8 @@ function buildIndex(ds){
     prodMonthly:prodMonthly, prodTarget:prodTarget, latestMonth:latestMonth,
     unitPrice:unitPrice, priceSrc:priceSrc, priceNote:priceNote, priceChan:priceChan,
     hasTargets: ds.targets.length > 0,
-    hasQty: ds.facts.some(function(f){ return f[5] > 0; })
+    hasQty: ds.facts.some(function(f){ return f[5] > 0; }),
+    hasOrders: ds.facts.some(function(f){ return f[6] > 0; })
   };
 }
 
@@ -4116,6 +4248,319 @@ function renderSourceBar(){
 
 function safe(fn, label){ try { fn(); } catch(e){ console.error('render step failed:', label, e); } }
 
+
+/* ==========================================================================
+   新增 A：年底 Landing 預估
+   問題：Q4 目標已經下來，大家要知道「照這個速度，年底會落在哪裡」。
+   兩種算法一起給，中間用區間表示，因為單一算法都會騙人：
+     ① 近 3 個月平均外推 —— 反映現在的手感，但完全不管年底的季節性。
+     ② 去年同期比重 —— 今年 YTD ÷（去年同期占去年全年的比例），
+        會自動把「去年 11、12 月特別大」這種季節性算進去。
+   另外一定要給「剩下每個月要做多少才達標」，那才是能拿去跟客戶談的數字。
+   ========================================================================== */
+function landingFor(pids, setMonth){
+  var m = Math.min(Math.max(setMonth, 1), 12), rest = 12 - m;
+  var cur = 0, prior = 0, priorFull = 0, target = 0, last3 = 0, last3n = 0;
+  pids.forEach(function(pi){
+    var pm = IDX.prodMonthly[pi]; if (!pm) return;
+    for (var k = 1; k <= 12; k++){
+      if (k <= m){ cur += pm.cur[k-1]; prior += pm.prior[k-1]; }
+      priorFull += pm.prior[k-1];
+      target += IDX.prodTarget[pi][k-1] || 0;
+    }
+  });
+  for (var k2 = Math.max(1, m - 2); k2 <= m; k2++){
+    var s = 0;
+    pids.forEach(function(pi){ var pm = IDX.prodMonthly[pi]; if (pm) s += pm.cur[k2-1]; });
+    last3 += s; last3n++;
+  }
+  var runRate = last3n ? last3 / last3n : 0;
+  var byRun = cur + runRate * rest;
+  var seasonRatio = priorFull > 0 ? prior / priorFull : 0;
+  var bySeason = seasonRatio > 0.05 ? cur / seasonRatio : null;
+  var lo = bySeason == null ? byRun : Math.min(byRun, bySeason);
+  var hi = bySeason == null ? byRun : Math.max(byRun, bySeason);
+  var needTotal = target - cur;
+  return {
+    month:m, rest:rest, cur:cur, prior:prior, priorFull:priorFull, target:target,
+    runRate:runRate, byRun:byRun, bySeason:bySeason, lo:lo, hi:hi,
+    needTotal:needTotal,
+    needPerMonth: rest > 0 ? needTotal / rest : null,
+    achLo: target > 0 ? lo / target : null,
+    achHi: target > 0 ? hi / target : null,
+    gapLo: target > 0 ? lo - target : null
+  };
+}
+
+function landingBoxes(pi, amount){
+  var u = IDX.unitPrice[pi];
+  if (!u || !amount) return '';
+  return '約 ' + nf.format(Math.round(Math.abs(amount) / u)) + ' 盒';
+}
+
+function renderLanding(){
+  var host = document.getElementById('landingBody');
+  if (!host) return;
+  var head = document.getElementById('landingHint');
+  if (!IDX.hasTargets){
+    host.innerHTML = '<p class="empty-note">還沒有上傳目標，無法估算年底落點。上傳含 Target／Product_Monthly 的檔案後就會出現。</p>';
+    if (head) head.textContent = '';
+    return;
+  }
+  var ids = scopeIds(), L = landingFor(ids, state.setMonth);
+  if (head) head.textContent = '已實現 ' + L.month + ' 個月，剩下 ' + L.rest + ' 個月';
+
+  function achCls(v){ return v == null ? 'none' : v >= 1 ? 'good' : v < 0.9 ? 'critical' : 'watch'; }
+  var mid = (L.lo + L.hi) / 2;
+  var cls = achCls(L.target > 0 ? mid / L.target : null);
+  var rangeTxt = Math.abs(L.hi - L.lo) < Math.max(L.hi * 0.005, 1)
+    ? compact(L.lo)
+    : compact(L.lo) + ' ～ ' + compact(L.hi);
+  var achTxt = L.achLo == null ? '—'
+    : (Math.abs(L.achHi - L.achLo) < 0.005 ? pct(L.achLo, 0) : pct(L.achLo, 0) + ' ～ ' + pct(L.achHi, 0));
+
+  var cards =
+    '<div class="land-card ' + cls + '">' +
+      '<div class="focus-label">年底 Landing 預估（' + esc(scopeLabel()) + '）</div>' +
+      '<div class="focus-big"><span class="focus-num">' + rangeTxt + '</span>' +
+        '<span class="focus-unit">／年度目標 ' + compact(L.target) + '</span></div>' +
+      '<div class="focus-sub">預估達成率 <b class="' + cls + '">' + achTxt + '</b>' +
+        (L.gapLo != null ? '　' + (L.gapLo >= 0 ? '<span class="up">保守估也超標 ' + compact(L.gapLo) + '</span>'
+                                               : '<span class="down">保守估差 ' + compact(-L.gapLo) + '</span>') : '') +
+      '</div>' +
+      '<div class="land-rows">' +
+        '<div class="land-row"><span class="lr-k">① 近 3 個月平均外推</span>' +
+          '<span class="lr-v">' + compact(L.byRun) + '</span>' +
+          '<span class="lr-n">每月 ' + compact(L.runRate) + ' × 剩 ' + L.rest + ' 個月</span></div>' +
+        '<div class="land-row"><span class="lr-k">② 去年同期比重推算</span>' +
+          '<span class="lr-v">' + (L.bySeason == null ? '—' : compact(L.bySeason)) + '</span>' +
+          '<span class="lr-n">' + (L.priorFull > 0 ? '去年 1–' + L.month + ' 月占全年 ' + pct(L.prior / L.priorFull, 0) : '去年無資料') + '</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="land-card need">' +
+      '<div class="focus-label">要達成年度目標，剩下每個月要做</div>' +
+      '<div class="focus-big"><span class="focus-num">' +
+        (L.needPerMonth == null ? '—' : (L.needTotal <= 0 ? '已達標' : compact(L.needPerMonth))) +
+        '</span><span class="focus-unit">／月</span></div>' +
+      '<div class="focus-sub">' +
+        (L.needTotal <= 0
+          ? 'YTD 已經超過年度目標，剩下的月份是加分。'
+          : '還差 <b>' + compact(L.needTotal) + '</b>，分攤到剩下 ' + L.rest + ' 個月' +
+            (L.runRate > 0 ? '；等於要比近 3 個月平均（' + compact(L.runRate) + '）' +
+              (L.needPerMonth > L.runRate
+                ? '<span class="down">多 ' + pct(L.needPerMonth / L.runRate - 1, 0) + '</span>'
+                : '<span class="up">少 ' + pct(1 - L.needPerMonth / L.runRate, 0) + '</span>') : '')) +
+      '</div>' +
+    '</div>';
+
+  // 逐品項：哪幾支會扯後腿，一眼看得出來
+  var rows = categoryProducts().map(function(p){
+    var l = landingFor([p.i], state.setMonth);
+    return { p:p, l:l };
+  }).filter(function(r){ return r.l.target > 0 || r.l.cur > 0; });
+  rows.sort(function(a, b){
+    var av = a.l.target > 0 ? (a.l.lo + a.l.hi) / 2 / a.l.target : 9, bv = b.l.target > 0 ? (b.l.lo + b.l.hi) / 2 / b.l.target : 9;
+    return av - bv;
+  });
+  var table = '<div class="table-scroll"><table class="rwd"><thead><tr>' +
+      '<th>品項</th><th class="num">YTD 實績</th><th class="num">年度目標</th>' +
+      '<th class="num">Landing 預估</th><th class="num">預估達成率</th><th class="num">剩餘月均需求</th>' +
+    '</tr></thead><tbody>' +
+    (rows.length ? rows.map(function(r){
+      var l = r.l, mid2 = (l.lo + l.hi) / 2;
+      var a = l.target > 0 ? mid2 / l.target : null, c = achCls(a);
+      var need = l.needPerMonth == null || l.needTotal <= 0 ? '已達標' :
+        compact(l.needPerMonth) + (IDX.hasQty && IDX.unitPrice[r.p.i] ? '<span class="box-unit">' + landingBoxes(r.p.i, l.needPerMonth) + '／月</span>' : '');
+      return '<tr><td class="name">' + esc(r.p.name) +
+          ' <span class="tag ' + r.p.category.toLowerCase() + '">' + r.p.category + '</span></td>' +
+        '<td class="num" data-l="YTD 實績">' + compact(l.cur) + '</td>' +
+        '<td class="num" data-l="年度目標">' + (l.target ? compact(l.target) : '—') + '</td>' +
+        '<td class="num" data-l="Landing">' + (Math.abs(l.hi - l.lo) < Math.max(l.hi * 0.005, 1)
+            ? compact(l.lo) : compact(l.lo) + '～' + compact(l.hi)) + '</td>' +
+        '<td class="num" data-l="預估達成率"><span class="badge-row ' + c + '"><span class="badge-dot"></span>' +
+          (a == null ? '—' : pct(a, 0)) + '</span></td>' +
+        '<td class="num" data-l="剩餘月均需求">' + need + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty-note">這個範圍沒有可估算的品項</td></tr>') +
+    '</tbody></table></div>';
+
+  host.innerHTML = '<div class="land-grid">' + cards + '</div>' + table +
+    '<p class="land-note">預估只用已經發生的出貨資料推算，不含任何人為調整；' +
+    '① 對最近的手感敏感、② 會把去年的年底季節性算進去，實際落點通常在兩者之間。</p>';
+}
+
+/* ==========================================================================
+   新增 B：新品（MDPF）開張與第二筆訂單追蹤
+   獎金規則：同一家客戶、同一支 MDPF 要有「兩張不同的出貨單」才算回購成立，
+   Ultra MDPF 與 HA MDPF 各自獨立計算，不能互相抵。
+   計算範圍：診所 ＋ 門前藥局（獨立藥局、連鎖藥局不算；醫院另外顯示、預設不計）。
+   ========================================================================== */
+var NEWPROD_KEY = 'deoh-pulse-newprod-v1';
+var NEWPROD_CFG = {};
+function loadNewProdCfg(){
+  try { var r = localStorage.getItem(NEWPROD_KEY); var o = r ? JSON.parse(r) : null;
+        return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  catch(e){ return {}; }
+}
+function saveNewProdCfg(){ try { localStorage.setItem(NEWPROD_KEY, JSON.stringify(NEWPROD_CFG)); } catch(e){} }
+var NP_SUBS = [['Clinic','診所'],['Front','門前藥局'],['Hospital','醫院'],['Independent','獨立藥局'],['Chain','連鎖藥局']];
+function npChans(){
+  var c = NEWPROD_CFG.chans;
+  return (c && c.length) ? c : ['Clinic','Front'];
+}
+/** 要追蹤的新品：預設抓名稱含 MDPF 的品項（Ultra／HA 各自一張卡） */
+function npProducts(){
+  var picked = NEWPROD_CFG.products;
+  var all = IDX.products.filter(function(p){ return /MDPF/i.test(p.name); });
+  if (picked && picked.length){
+    var set = {}; picked.forEach(function(n){ set[normName(n)] = 1; });
+    var sel = IDX.products.filter(function(p){ return set[normName(p.name)]; });
+    if (sel.length) return sel.sort(byOrder);
+  }
+  return all.sort(byOrder);
+}
+
+/** 單一新品的開張／回購統計（只看今年） */
+function newProdStats(pi){
+  var chans = npChans(), ok = {}; chans.forEach(function(c){ ok[c] = 1; });
+  var byCust = {};                       // ci -> {orders, months:{}, amt, qty, last}
+  DATA.facts.forEach(function(f){
+    if (f[1] !== pi || f[2] !== IDX.curYear) return;
+    var o = byCust[f[0]] || (byCust[f[0]] = { orders:0, months:{}, amt:0, qty:0, last:0 });
+    o.orders += (f[6] || 0);
+    o.months[f[3]] = 1;
+    o.amt += f[4]; o.qty += (f[5] || 0);
+    if (f[3] > o.last) o.last = f[3];
+  });
+  // 這家今年全部品項的業績，拿來幫「未開張名單」排序（先打大的）
+  var custTotal = {};
+  DATA.facts.forEach(function(f){
+    if (f[2] !== IDX.curYear) return;
+    custTotal[f[0]] = (custTotal[f[0]] || 0) + f[4];
+  });
+
+  var second = [], first = [], none = [], otherChan = [];
+  IDX.customers.forEach(function(c){
+    var o = byCust[c.i];
+    var inScope = !!ok[c.sub];
+    var mCount = o ? Object.keys(o.months).length : 0;
+    // 有單號就用單號去重；沒有（舊存檔或檔案沒這欄）就退回「下單月數」當保守估計
+    var orders = o ? (IDX.hasOrders ? o.orders : mCount) : 0;
+    if (!o){
+      if (inScope && (custTotal[c.i] || 0) > 0) none.push({ c:c, total:custTotal[c.i] || 0 });
+      return;
+    }
+    var row = { c:c, orders:orders, months:mCount, amt:o.amt, qty:o.qty, last:o.last, total:custTotal[c.i] || 0 };
+    if (!inScope){ otherChan.push(row); return; }
+    if (orders >= 2) second.push(row); else first.push(row);
+  });
+  var byAmt = function(a, b){ return b.amt - a.amt; };
+  second.sort(byAmt); first.sort(byAmt);
+  none.sort(function(a, b){ return b.total - a.total; });
+  otherChan.sort(byAmt);
+  return { second:second, first:first, none:none, otherChan:otherChan,
+           opened: second.length + first.length };
+}
+
+function npRowList(rows, kind){
+  if (!rows.length) return '<p class="dl-empty">目前沒有。</p>';
+  var showBoxes = IDX.hasQty;
+  return '<div class="dl-wrap"><table class="dl-table"><thead><tr>' +
+      '<th class="num">#</th><th>客戶名稱</th><th>通路</th>' +
+      (kind === 'none' ? '<th class="num">今年全品項業績</th>'
+                       : '<th class="num">出貨單數</th><th class="num">下單月份</th>' +
+                         '<th class="num">金額</th>' + (showBoxes ? '<th class="num">數量</th>' : '')) +
+    '</tr></thead><tbody>' + rows.map(function(r, i){
+      return '<tr><td class="num">' + (i + 1) + '</td>' +
+        '<td class="name">' + esc(r.c.name) + '</td>' +
+        '<td>' + (SUBCHAN_LABEL[r.c.sub] || r.c.channel) + '</td>' +
+        (kind === 'none'
+          ? '<td class="num">' + compact(r.total) + '</td>'
+          : '<td class="num">' + (IDX.hasOrders ? r.orders + ' 張' : '—') + '</td>' +
+            '<td class="num">' + r.months + ' 個月（最近 ' + r.last + ' 月）</td>' +
+            '<td class="num">' + compact(r.amt) + '</td>' +
+            (showBoxes ? '<td class="num">' + nf.format(r.qty) + '</td>' : '')) +
+      '</tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+function renderNewProd(){
+  var host = document.getElementById('newProdBody');
+  if (!host) return;
+  var prods = npProducts();
+  var hint = document.getElementById('newProdHint');
+  if (!prods.length){
+    host.innerHTML = '<p class="empty-note">目前的資料裡沒有 MDPF 品項。</p>';
+    if (hint) hint.textContent = '';
+    return;
+  }
+  if (hint) hint.textContent = (IDX.hasOrders ? '以出貨單號認定' : '以下單月份認定（舊資料無單號）') +
+                               '｜' + IDX.curYear + ' 年';
+
+  var chans = npChans(), chanSet = {}; chans.forEach(function(c){ chanSet[c] = 1; });
+  var cfgRow = '<div class="np-cfg"><span class="tg-lab">計入通路</span>' +
+    NP_SUBS.map(function(g){
+      return '<button type="button" class="tg-btn' + (chanSet[g[0]] ? ' on' : '') +
+             '" data-npchan="' + g[0] + '">' + g[1] + '</button>';
+    }).join('') +
+    '<span class="tg-note">獎金規則：同一家、同一支 MDPF 要有<b>兩張不同的出貨單</b>才算第二筆；' +
+    'Ultra 與 HA 分開計算。預設只計診所與門前藥局。</span></div>';
+
+  var cards = prods.map(function(p){
+    var s = newProdStats(p.i);
+    var openPct = s.opened ? s.second.length / s.opened : 0;
+    return '<div class="np-card">' +
+      '<div class="np-head"><span class="np-name">' + esc(p.name) + '</span>' +
+        '<span class="tag ' + p.category.toLowerCase() + '">' + p.category + '</span></div>' +
+      '<div class="np-nums">' +
+        '<div class="np-num good"><b>' + s.second.length + '</b><span>已第二筆<br>（可領獎金）</span></div>' +
+        '<div class="np-num watch"><b>' + s.first.length + '</b><span>已開張<br>只差第二筆</span></div>' +
+        '<div class="np-num"><b>' + s.none.length + '</b><span>尚未開張<br>（範圍內有往來）</span></div>' +
+      '</div>' +
+      '<div class="np-bar"><i style="width:' + (openPct * 100).toFixed(0) + '%"></i></div>' +
+      '<div class="np-sub">已開張 ' + s.opened + ' 家中，<b>' + pct(openPct, 0) + '</b> 已經完成第二筆' +
+        (s.otherChan.length ? '；另有 ' + s.otherChan.length + ' 家在不計入的通路（' +
+          s.otherChan.slice(0, 2).map(function(r){ return esc(r.c.name); }).join('、') +
+          (s.otherChan.length > 2 ? ' 等' : '') + '）' : '') + '</div>' +
+      '<div class="focus-acts">' +
+        '<button type="button" class="btn tiny" data-np="first|' + p.i + '">只差第二筆名單（' + s.first.length + '）</button>' +
+        '<button type="button" class="btn tiny" data-np="second|' + p.i + '">已達標名單（' + s.second.length + '）</button>' +
+        '<button type="button" class="btn tiny" data-np="none|' + p.i + '">未開張名單（' + s.none.length + '）</button>' +
+      '</div>' +
+      '<div class="np-list" id="npList' + p.i + '"></div>' +
+    '</div>';
+  }).join('');
+
+  host.innerHTML = cfgRow + '<div class="np-grid">' + cards + '</div>' +
+    (IDX.hasOrders ? '' :
+      '<p class="tools-note">⚠ 這份資料沒有出貨單號（舊版存下來的），目前用「下單月份數」當第二筆的保守認定：' +
+      '同一個月下兩張單會被算成一筆。把原始檔再上傳一次就會改用單號計算。</p>');
+
+  Array.prototype.forEach.call(host.querySelectorAll('[data-npchan]'), function(b){
+    b.onclick = function(){
+      var v = b.getAttribute('data-npchan'), cur = npChans().slice();
+      var k = cur.indexOf(v);
+      if (k >= 0) cur.splice(k, 1); else cur.push(v);
+      if (!cur.length) cur = ['Clinic'];
+      NEWPROD_CFG.chans = cur; saveNewProdCfg(); renderNewProd();
+    };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-np]'), function(b){
+    b.onclick = function(){
+      var parts = b.getAttribute('data-np').split('|'), kind = parts[0], pi = +parts[1];
+      var box = document.getElementById('npList' + pi);
+      if (!box) return;
+      if (box.getAttribute('data-open') === kind){ box.innerHTML = ''; box.removeAttribute('data-open'); return; }
+      var s = newProdStats(pi);
+      var rows = kind === 'first' ? s.first : kind === 'second' ? s.second : s.none.slice(0, 30);
+      var cap = kind === 'first' ? '已開張、只差第二筆 —— 這份就是這個月要追的名單'
+              : kind === 'second' ? '已完成第二筆（獎金條件成立）'
+              : '尚未開張、但今年有往來的客戶（依今年全品項業績排序，只列前 30 家）';
+      box.innerHTML = '<div class="dl-box"><p class="dl-cap">' + cap + '</p>' + npRowList(rows, kind) + '</div>';
+      box.setAttribute('data-open', kind);
+    };
+  });
+}
+
 function render(){
   safe(renderSourceBar, 'sourceBar');
   safe(renderSetMonth, 'setMonth');
@@ -4125,6 +4570,8 @@ function render(){
   safe(renderKPIs, 'kpis');
   safe(renderCharts, 'charts');
   safe(renderInsights, 'insights');
+  safe(renderLanding, 'landing');
+  safe(renderNewProd, 'newProd');
   safe(renderGapTable, 'gapTable');
   safe(renderCustomers, 'customers');
   safe(renderMergeCheck, 'mergeCheck');
@@ -4358,9 +4805,11 @@ window.addEventListener('resize', function(){
 // 先用示範資料把畫面畫出來（頁面一打開就是可用狀態），再換成這台電腦上存過的資料
 TAGS = loadTags();          // 客戶標註：與資料分開存，重新上傳不會被蓋掉
 FOCUS_CFG = loadFocusCfg(); // 重點品項的目標通路設定，同樣與資料分開存
+NEWPROD_CFG = loadNewProdCfg(); // 新品獎金追蹤的通路設定
 var stored = loadStored();
 setData(stored || buildDemoDataset(), false);
 wireUpload();
 
 })();
 </script>
+
