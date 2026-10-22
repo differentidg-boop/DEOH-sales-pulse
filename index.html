@@ -332,7 +332,7 @@
   .chan-figs{ width:158px; text-align:right; font-size:11.5px; color:var(--ink-muted); flex-shrink:0; font-family:'IBM Plex Mono',monospace; }
   .chan-figs .amt{ color:var(--ink); font-weight:600; font-size:12.5px; }
   /* 重點追蹤：兩張大卡 */
-  .focus-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .focus-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
   @media (max-width:860px){ .focus-grid{ grid-template-columns:1fr; } }
   .focus-card{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent-ded);
     border-radius:var(--radius-md); box-shadow:var(--shadow); padding:15px 18px; }
@@ -433,6 +433,7 @@
   .np-sub{ font-size:11.5px; color:var(--ink-muted); line-height:1.7; }
   .np-sub b{ color:var(--ink); }
   .np-ret{ color:var(--watch); }
+  .np-hit{ color:var(--good); }
   .np-list .dl-box{ margin-top:10px; }
 
   /* 洞察卡 */
@@ -777,14 +778,6 @@
       <div class="head-tools"><span class="hint" id="landingHint"></span></div>
     </div>
     <div id="landingBody"></div>
-  </section>
-
-  <section class="block" id="newProdBlock">
-    <div class="block-head">
-      <h2>MDPF 新品：開張與第二筆訂單</h2>
-      <div class="head-tools"><span class="hint" id="newProdHint"></span></div>
-    </div>
-    <div id="newProdBody"></div>
   </section>
 
   <section class="block">
@@ -4052,50 +4045,50 @@ function focusCards(){
     });
   }
 
-  /* ---------- ② 新開發藥局數 ---------- */
-  var phAll = cis.filter(function(ci){ var c = chanOf(ci); return (c === 'Independent' || c === 'Chain') && byC[ci].y2 > 0; });
-  var phNew = phAll.filter(function(ci){ return byC[ci].y1f === 0 && byC[ci].y2 > 0; });
-  var lateLastYear = phAll.filter(function(ci){ return byC[ci].y1 === 0 && byC[ci].y1f > 0 && byC[ci].y2 > 0; });
-  var newAmt = phNew.reduce(function(a, ci){ return a + byC[ci].y2; }, 0);
-  var phAmt = phAll.reduce(function(a, ci){ return a + byC[ci].y2; }, 0);
-  var once = phNew.filter(function(ci){ return Object.keys(byC[ci].mm).length <= 2; }).length;
-  out.push({
-    key:'f-newph', warn: priorCoverage < 12,
-    label:'② 新開發藥局數（去年整年都沒下單）',
-    num: phNew.length, unit:'家',
-    sub: '藥局通路共 ' + phAll.length + ' 家有交易；新客戶今年做出 ' + compact(newAmt) +
-         '，佔藥局通路 ' + pct(phAmt ? newAmt / phAmt : 0, 1),
-    rows: phNew.sort(function(a, b){ return byC[b].y2 - byC[a].y2; }).slice(0, 4).map(function(ci){
-      var c = IDX.customers[ci];
-      return { k: c ? c.name : '—', v: compact(byC[ci].y2), w: newAmt ? byC[ci].y2 / newAmt * 100 : 0, hl:true };
-    }),
-    read: (phNew.length
-      ? '平均每家 <b>' + compact(newAmt / phNew.length) + '</b>；其中 <b class="' + (once ? 'down' : 'up') + '">' + once +
-        ' 家</b>今年只進貨 1–2 個月，最需要回訪固化。'
-      : '今年還沒有新開發的藥局。') +
-      (lateLastYear.length
-        ? ' 另有 <b>' + lateLastYear.length + ' 家</b>去年 1–' + m + ' 月沒下單、但去年下半年有，屬於<b>回流客</b>不是新客戶，已排除。'
-        : '') +
-      (priorCoverage < 12
-        ? ' <b class="down">注意：目前手上的去年資料只有 ' + priorCoverage + ' 個月</b>，' +
-          '要判斷「去年整年都沒下單」需要去年 1–12 月完整資料，請補上再看這個數字。'
-        : ''),
-    expand: { key:'f-newph-all', label:'展開全部 ' + phNew.length + ' 家', shut:'收合名單',
-              cap:'今年新開發藥局 ' + phNew.length + ' 家（去年 1–12 月完全沒下單、今年有進貨）',
-              extra: { head:'去年全年', get:function(r){ return compact(r.y1f); } },
-              rows: phNew.map(row).sort(function(a,b){ return b.y2 - a.y2; }) },
-    expand2: lateLastYear.length
-      ? { key:'f-newph-back', label:'回流客 ' + lateLastYear.length + ' 家', shut:'收合名單',
-          cap:'回流客 ' + lateLastYear.length + ' 家（去年 1–' + m + ' 月沒下單，但去年下半年有；不算新開發）',
-          extra: { head:'去年全年', get:function(r){ return compact(r.y1f); } },
-          rows: lateLastYear.map(row).sort(function(a,b){ return b.y2 - a.y2; }) }
-      : null
-  });
+  /* ---------- ② MDPF 第二單達成率（以客戶計，一家只算一次） ---------- */
+  /* 獎金規則：一家客戶只能算一次，只要「其中一支 MDPF 重複下單」就成立；
+     但重複必須是同一支（Ultra 兩張、或 HA 兩張），Ultra 一張＋HA 一張不算。 */
+  if (npProducts().length){
+    var np = npCustStats();
+    var npRate = np.opened ? np.done.length / np.opened : 0;
+    out.push({
+      key:'f-np', warn: np.waiting.length > 0, npCfg:true,
+      label:'② MDPF 第二單達成率（以客戶計，一家只算一次）',
+      num: pct(npRate, 0), unit:'（' + np.done.length + ' / ' + np.opened + ' 家）',
+      sub: '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的出貨單；' +
+           'Ultra 一張＋HA 一張不算）；目前計入 ' +
+           npChans().map(function(c){ return SUBCHAN_LABEL[c] || c; }).join('、') +
+           '；另有 ' + np.none.length + ' 家尚未開張' +
+           (np.retOnly.length ? '、' + np.retOnly.length + ' 家只有退貨沖銷（不算開張）' : ''),
+      rows: np.prods.map(function(p){
+        var q = np.qualByProd[p.i] || 0, o2 = np.openByProd[p.i] || 0;
+        return { k: npShort(p.name), v: q + ' / ' + o2 + ' 家（' + pct(o2 ? q / o2 : 0, 0) + '）',
+                 w: o2 ? q / o2 * 100 : 0, hl: q > 0 };
+      }),
+      read: (np.waiting.length
+        ? '還沒成立的有 <b class="down">' + np.waiting.length + ' 家</b>：' +
+          np.waiting.slice(0, 4).map(function(r){
+            var names = r.items.map(function(it){ return npShort(it.name); });
+            return esc(r.c.name) + '（' + names.join('＋') + (names.length > 1 ? ' 各 1 張' : ' 1 張') + '）';
+          }).join('、') + (np.waiting.length > 4 ? ' 等' : '') +
+          '，任何一支補第二張單就算。'
+        : '已開張的客戶都成立了。') +
+        (np.bothCount ? ' 其中 <b>' + np.bothCount + ' 家</b>兩支都已重複下單（獎金仍只計一次）。' : '') +
+        (IDX.hasOrders ? '' : ' <b class="down">這份資料沒有出貨單號</b>，目前用「下單月份數」保守認定，同月兩張單會被算成一筆；原始檔再上傳一次就會改用單號。'),
+      expand: { key:'f-np-wait', label:'還沒成立名單（' + np.waiting.length + '）', shut:'收合名單',
+                html: npCustList(np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單') },
+      expand2:{ key:'f-np-done', label:'已成立名單（' + np.done.length + '）', shut:'收合名單',
+                html: npCustList(np.done, '已成立（任一支 MDPF 已有兩張不同出貨單，粗體就是達標的那一支）') }
+    });
+  }
+
   return out;
 }
 
 function focusExpandHtml(ex){
-  if (!ex || !ex.rows) return '';
+  if (!ex) return '';
+  if (ex.html) return state.insExpand[ex.key] ? ex.html : '';
+  if (!ex.rows) return '';
   return state.insExpand[ex.key]
     ? '<div class="dl-box"><p class="dl-cap">' + esc(ex.cap) + '</p>' + detailTable(ex.rows, ex.extra) + '</div>' : '';
 }
@@ -4105,6 +4098,13 @@ function renderFocus(){
   try { cards = focusCards(); } catch(e){ console.error('focus failed', e); }
   document.getElementById('focusGrid').innerHTML = cards.map(function(c){
     var cfg = '';
+    if (c.npCfg){
+      cfg = '<div class="tg-row"><span class="tg-lab">計入通路</span>' +
+        NP_SUBS.map(function(g){
+          var on = npChans().indexOf(g[0]) >= 0;
+          return '<button type="button" class="tg-btn' + (on ? ' on' : '') + '" data-npchan="' + g[0] + '">' + g[1] + '</button>';
+        }).join('') + '<span class="tg-note">獨立藥局與連鎖藥局預設不計入；要納入醫院點一下即可</span></div>';
+    }
     if (c.cfgKey){
       cfg = '<div class="tg-row"><span class="tg-lab">目標通路</span>' +
         CHAN_ORDER.filter(function(g){ return (c.allByChan[g[0]] || 0) > 0; }).map(function(g){
@@ -4132,6 +4132,14 @@ function renderFocus(){
       focusExpandHtml(c.expand) + focusExpandHtml(c.expand2) +
     '</div>';
   }).join('');
+  Array.prototype.forEach.call(document.getElementById('focusGrid').querySelectorAll('[data-npchan]'), function(b){
+    b.onclick = function(){
+      var v = b.getAttribute('data-npchan'), cur = npChans().slice(), k = cur.indexOf(v);
+      if (k >= 0) cur.splice(k, 1); else cur.push(v);
+      if (!cur.length) cur = ['Clinic'];
+      NEWPROD_CFG.chans = cur; saveNewProdCfg(); renderFocus();
+    };
+  });
 }
 
 function renderInsights(){
@@ -4422,152 +4430,99 @@ function npProducts(){
   return all.sort(byOrder);
 }
 
-/** 單一新品的開張／回購統計（只看今年） */
-function newProdStats(pi){
-  var chans = npChans(), ok = {}; chans.forEach(function(c){ ok[c] = 1; });
-  var byCust = {};                       // ci -> {orders, months:{}, amt, qty, last}
-  DATA.facts.forEach(function(f){
-    if (f[1] !== pi || f[2] !== IDX.curYear) return;
-    var o = byCust[f[0]] || (byCust[f[0]] = { orders:0, months:{}, amt:0, qty:0, last:0 });
-    o.orders += (f[6] || 0);
-    o.months[f[3]] = 1;
-    o.amt += f[4]; o.qty += (f[5] || 0);
-    if (f[3] > o.last) o.last = f[3];
-  });
-  // 這家今年全部品項的業績，拿來幫「未開張名單」排序（先打大的）
-  var custTotal = {};
-  DATA.facts.forEach(function(f){
-    if (f[2] !== IDX.curYear) return;
-    custTotal[f[0]] = (custTotal[f[0]] || 0) + f[4];
-  });
+/** MDPF 獎金統計：以「客戶」為單位，一家只算一次。
+    成立條件＝任何一支 MDPF 有兩張以上不同的出貨單（Ultra 兩張、或 HA 兩張）；
+    Ultra 一張＋HA 一張不算（必須同一支重複下單）。
+    範圍＝診所＋門前藥局（可在卡片上調整），退貨沖銷不算開張。 */
+function npCustStats(){
+  var prods = npProducts(), pmap = {};
+  prods.forEach(function(p){ pmap[p.i] = p; });
+  var ok = {}; npChans().forEach(function(c){ ok[c] = 1; });
 
-  var second = [], first = [], none = [], otherChan = [], retOnly = [];
+  var byCust = {};
+  DATA.facts.forEach(function(f){
+    if (!pmap[f[1]] || f[2] !== IDX.curYear) return;
+    var o = byCust[f[0]] || (byCust[f[0]] = { per:{}, amt:0, qty:0, last:0 });
+    var pp = o.per[f[1]] || (o.per[f[1]] = { pi:f[1], orders:0, months:{}, amt:0, qty:0, last:0 });
+    pp.orders += (f[6] || 0); pp.months[f[3]] = 1;
+    pp.amt += f[4]; pp.qty += (f[5] || 0); if (f[3] > pp.last) pp.last = f[3];
+    o.amt += f[4]; o.qty += (f[5] || 0); if (f[3] > o.last) o.last = f[3];
+  });
+  // 未開張名單要依「這家今年整體業績」排序，先打大的
+  var custTotal = {};
+  DATA.facts.forEach(function(f){ if (f[2] === IDX.curYear) custTotal[f[0]] = (custTotal[f[0]] || 0) + f[4]; });
+
+  var done = [], waiting = [], none = [], retOnly = [], otherChan = [];
+  var qualByProd = {}, openByProd = {}, bothCount = 0;
   IDX.customers.forEach(function(c){
-    var o = byCust[c.i];
-    var inScope = !!ok[c.sub];
-    var mCount = o ? Object.keys(o.months).length : 0;
-    // 有單號就用單號去重；沒有（舊存檔或檔案沒這欄）就退回「下單月數」當保守估計
-    var orders = o ? (IDX.hasOrders ? o.orders : mCount) : 0;
+    var o = byCust[c.i], inScope = !!ok[c.sub];
     if (!o){
       if (inScope && (custTotal[c.i] || 0) > 0) none.push({ c:c, total:custTotal[c.i] || 0 });
       return;
     }
-    var row = { c:c, orders:orders, months:mCount, amt:o.amt, qty:o.qty, last:o.last, total:custTotal[c.i] || 0 };
-    // 今年只有退貨沖銷、沒有任何正式進貨單的，不能算開張
-    if (orders === 0 && o.amt <= 0){ if (inScope) retOnly.push(row); return; }
+    var items = Object.keys(o.per).map(function(k){
+      var pp = o.per[k], mCount = Object.keys(pp.months).length;
+      // 有單號就用單號去重；沒有就退回「下單月數」當保守認定
+      pp.ord = IDX.hasOrders ? pp.orders : mCount;
+      pp.months_n = mCount;
+      pp.name = (pmap[pp.pi] || {}).name || '';
+      return pp;
+    }).sort(function(x, y){ return y.ord - x.ord || y.amt - x.amt; });
+    var best = items.length ? items[0].ord : 0;
+    var qual = items.filter(function(it){ return it.ord >= 2; });
+    var row = { c:c, items:items, amt:o.amt, qty:o.qty, last:o.last, best:best,
+                qual:qual, total:custTotal[c.i] || 0 };
+    if (best === 0 && o.amt <= 0){ if (inScope) retOnly.push(row); return; }
     if (!inScope){ otherChan.push(row); return; }
-    if (orders >= 2) second.push(row); else first.push(row);
+    items.forEach(function(it){ if (it.ord > 0) openByProd[it.pi] = (openByProd[it.pi] || 0) + 1; });
+    if (qual.length){
+      qual.forEach(function(it){ qualByProd[it.pi] = (qualByProd[it.pi] || 0) + 1; });
+      if (qual.length > 1) bothCount++;
+      done.push(row);
+    } else waiting.push(row);
   });
-  var byAmt = function(a, b){ return b.amt - a.amt; };
-  second.sort(byAmt); first.sort(byAmt);
-  none.sort(function(a, b){ return b.total - a.total; });
-  otherChan.sort(byAmt);
-  retOnly.sort(function(a, b){ return a.amt - b.amt; });
-  return { second:second, first:first, none:none, otherChan:otherChan, retOnly:retOnly,
-           opened: second.length + first.length };
+  var byAmt = function(x, y){ return y.amt - x.amt; };
+  done.sort(byAmt); waiting.sort(byAmt); otherChan.sort(byAmt);
+  none.sort(function(x, y){ return y.total - x.total; });
+  return { prods:prods, done:done, waiting:waiting, none:none, retOnly:retOnly, otherChan:otherChan,
+           qualByProd:qualByProd, openByProd:openByProd, bothCount:bothCount,
+           opened: done.length + waiting.length };
 }
 
-function npRowList(rows, kind){
-  if (!rows.length) return '<p class="dl-empty">目前沒有。</p>';
-  var showBoxes = IDX.hasQty;
-  return '<div class="dl-wrap"><table class="dl-table"><thead><tr>' +
-      '<th class="num">#</th><th>客戶名稱</th><th>通路</th>' +
-      (kind === 'none' ? '<th class="num">今年全品項業績</th>'
-                       : '<th class="num">出貨單數</th><th class="num">下單月份</th>' +
-                         '<th class="num">金額</th>' + (showBoxes ? '<th class="num">數量</th>' : '')) +
+function npShort(name){
+  return String(name || '').replace(/SYSTANE\s*/i, '').replace(/\s*10ML/i, '').replace(/ULTRA/i, 'Ultra');
+}
+/** 每家客戶的 MDPF 下單情形：一定要逐支列出張數，
+    才看得出來「Ultra 一張＋HA 一張」為什麼還不算達標。 */
+function npItemsText(items){
+  if (!items.length) return '—';
+  return items.map(function(it){
+    var n = IDX.hasOrders ? it.ord + ' 張' : it.months_n + ' 個月';
+    return npShort(it.name) + ' ' + (it.ord >= 2 ? '<b class="np-hit">' + n + '</b>' : n);
+  }).join('、');
+}
+function npCustList(rows, cap, kind){
+  if (!rows.length) return '<div class="dl-box"><p class="dl-cap">' + esc(cap) + '</p>' +
+    '<p class="dl-empty">目前沒有。</p></div>';
+  var showQty = IDX.hasQty;
+  return '<div class="dl-box"><p class="dl-cap">' + esc(cap) + '</p><div class="dl-wrap">' +
+    '<table class="dl-table"><thead><tr><th class="num">#</th><th>客戶名稱</th><th>通路</th>' +
+    (kind === 'none'
+      ? '<th class="num">今年全品項業績</th>'
+      : '<th>MDPF 下單情形' + (IDX.hasOrders ? '（出貨單數）' : '（下單月數）') + '</th>' +
+        '<th class="num">最近下單</th><th class="num">MDPF 金額</th>' + (showQty ? '<th class="num">數量</th>' : '')) +
     '</tr></thead><tbody>' + rows.map(function(r, i){
       return '<tr><td class="num">' + (i + 1) + '</td>' +
         '<td class="name">' + esc(r.c.name) + '</td>' +
         '<td>' + (SUBCHAN_LABEL[r.c.sub] || r.c.channel) + '</td>' +
         (kind === 'none'
           ? '<td class="num">' + compact(r.total) + '</td>'
-          : '<td class="num">' + (IDX.hasOrders ? r.orders + ' 張' : '—') + '</td>' +
-            '<td class="num">' + r.months + ' 個月（最近 ' + r.last + ' 月）</td>' +
+          : '<td>' + npItemsText(r.items) + '</td>' +
+            '<td class="num">' + r.last + ' 月</td>' +
             '<td class="num">' + compact(r.amt) + '</td>' +
-            (showBoxes ? '<td class="num">' + nf.format(r.qty) + '</td>' : '')) +
+            (showQty ? '<td class="num">' + nf.format(r.qty) + '</td>' : '')) +
       '</tr>';
-    }).join('') + '</tbody></table></div>';
-}
-
-function renderNewProd(){
-  var host = document.getElementById('newProdBody');
-  if (!host) return;
-  var prods = npProducts();
-  var hint = document.getElementById('newProdHint');
-  if (!prods.length){
-    host.innerHTML = '<p class="empty-note">目前的資料裡沒有 MDPF 品項。</p>';
-    if (hint) hint.textContent = '';
-    return;
-  }
-  if (hint) hint.textContent = (IDX.hasOrders ? '以出貨單號認定' : '以下單月份認定（舊資料無單號）') +
-                               '｜' + IDX.curYear + ' 年';
-
-  var chans = npChans(), chanSet = {}; chans.forEach(function(c){ chanSet[c] = 1; });
-  var cfgRow = '<div class="np-cfg"><span class="tg-lab">計入通路</span>' +
-    NP_SUBS.map(function(g){
-      return '<button type="button" class="tg-btn' + (chanSet[g[0]] ? ' on' : '') +
-             '" data-npchan="' + g[0] + '">' + g[1] + '</button>';
-    }).join('') +
-    '<span class="tg-note">獎金規則：同一家、同一支 MDPF 要有<b>兩張不同的出貨單</b>才算第二筆；' +
-    'Ultra 與 HA 分開計算。預設只計診所與門前藥局。</span></div>';
-
-  var cards = prods.map(function(p){
-    var s = newProdStats(p.i);
-    var openPct = s.opened ? s.second.length / s.opened : 0;
-    return '<div class="np-card">' +
-      '<div class="np-head"><span class="np-name">' + esc(p.name) + '</span>' +
-        '<span class="tag ' + p.category.toLowerCase() + '">' + p.category + '</span></div>' +
-      '<div class="np-nums">' +
-        '<div class="np-num good"><b>' + s.second.length + '</b><span>已第二筆<br>（可領獎金）</span></div>' +
-        '<div class="np-num watch"><b>' + s.first.length + '</b><span>已開張<br>只差第二筆</span></div>' +
-        '<div class="np-num"><b>' + s.none.length + '</b><span>尚未開張<br>（範圍內有往來）</span></div>' +
-      '</div>' +
-      '<div class="np-bar"><i style="width:' + (openPct * 100).toFixed(0) + '%"></i></div>' +
-      '<div class="np-sub">已開張 ' + s.opened + ' 家中，<b>' + pct(openPct, 0) + '</b> 已經完成第二筆' +
-        (s.otherChan.length ? '；另有 ' + s.otherChan.length + ' 家在不計入的通路（' +
-          s.otherChan.slice(0, 2).map(function(r){ return esc(r.c.name); }).join('、') +
-          (s.otherChan.length > 2 ? ' 等' : '') + '）' : '') +
-        (s.retOnly.length ? '。<span class="np-ret">⚠ ' + s.retOnly.length + ' 家今年只有退貨沖銷、沒有進貨單（' +
-          s.retOnly.slice(0, 2).map(function(r){ return esc(r.c.name); }).join('、') +
-          (s.retOnly.length > 2 ? ' 等' : '') + '），不算開張。</span>' : '') + '</div>' +
-      '<div class="focus-acts">' +
-        '<button type="button" class="btn tiny" data-np="first|' + p.i + '">只差第二筆名單（' + s.first.length + '）</button>' +
-        '<button type="button" class="btn tiny" data-np="second|' + p.i + '">已達標名單（' + s.second.length + '）</button>' +
-        '<button type="button" class="btn tiny" data-np="none|' + p.i + '">未開張名單（' + s.none.length + '）</button>' +
-      '</div>' +
-      '<div class="np-list" id="npList' + p.i + '"></div>' +
-    '</div>';
-  }).join('');
-
-  host.innerHTML = cfgRow + '<div class="np-grid">' + cards + '</div>' +
-    (IDX.hasOrders ? '' :
-      '<p class="tools-note">⚠ 這份資料沒有出貨單號（舊版存下來的），目前用「下單月份數」當第二筆的保守認定：' +
-      '同一個月下兩張單會被算成一筆。把原始檔再上傳一次就會改用單號計算。</p>');
-
-  Array.prototype.forEach.call(host.querySelectorAll('[data-npchan]'), function(b){
-    b.onclick = function(){
-      var v = b.getAttribute('data-npchan'), cur = npChans().slice();
-      var k = cur.indexOf(v);
-      if (k >= 0) cur.splice(k, 1); else cur.push(v);
-      if (!cur.length) cur = ['Clinic'];
-      NEWPROD_CFG.chans = cur; saveNewProdCfg(); renderNewProd();
-    };
-  });
-  Array.prototype.forEach.call(host.querySelectorAll('[data-np]'), function(b){
-    b.onclick = function(){
-      var parts = b.getAttribute('data-np').split('|'), kind = parts[0], pi = +parts[1];
-      var box = document.getElementById('npList' + pi);
-      if (!box) return;
-      if (box.getAttribute('data-open') === kind){ box.innerHTML = ''; box.removeAttribute('data-open'); return; }
-      var s = newProdStats(pi);
-      var rows = kind === 'first' ? s.first : kind === 'second' ? s.second : s.none.slice(0, 30);
-      var cap = kind === 'first' ? '已開張、只差第二筆 —— 這份就是這個月要追的名單'
-              : kind === 'second' ? '已完成第二筆（獎金條件成立）'
-              : '尚未開張、但今年有往來的客戶（依今年全品項業績排序，只列前 30 家）';
-      box.innerHTML = '<div class="dl-box"><p class="dl-cap">' + cap + '</p>' + npRowList(rows, kind) + '</div>';
-      box.setAttribute('data-open', kind);
-    };
-  });
+    }).join('') + '</tbody></table></div></div>';
 }
 
 function render(){
@@ -4580,7 +4535,6 @@ function render(){
   safe(renderCharts, 'charts');
   safe(renderInsights, 'insights');
   safe(renderLanding, 'landing');
-  safe(renderNewProd, 'newProd');
   safe(renderGapTable, 'gapTable');
   safe(renderCustomers, 'customers');
   safe(renderMergeCheck, 'mergeCheck');
