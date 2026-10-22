@@ -432,6 +432,7 @@
   .np-bar i{ display:block; height:100%; border-radius:99px; background:var(--good); }
   .np-sub{ font-size:11.5px; color:var(--ink-muted); line-height:1.7; }
   .np-sub b{ color:var(--ink); }
+  .np-ret{ color:var(--watch); }
   .np-list .dl-box{ margin-top:10px; }
 
   /* 洞察卡 */
@@ -1759,7 +1760,9 @@ function ingestSalesRows(kind, header, rowIter, col){
     var pi = col.pi(pname, kind);
     // 單號前面加上來源代號，DED 與 GE 的流水號萬一撞號也不會被當成同一張單
     var ord = idx.ord >= 0 ? String(row[idx.ord] == null ? '' : row[idx.ord]).trim() : '';
-    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty, ord ? kind + ':' + ord : '');
+    // 退貨／沖銷（金額為負）的單子不算一筆訂單 —— 新品獎金算的是「進貨」，
+    // 不能讓一張退貨單幫客戶湊到第二筆。
+    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty, (ord && amt > 0) ? kind + ':' + ord : '');
     col.notePrice(pi, channelOf(rawChan), amt, qty, ym[0]);
     used++;
   });
@@ -4438,7 +4441,7 @@ function newProdStats(pi){
     custTotal[f[0]] = (custTotal[f[0]] || 0) + f[4];
   });
 
-  var second = [], first = [], none = [], otherChan = [];
+  var second = [], first = [], none = [], otherChan = [], retOnly = [];
   IDX.customers.forEach(function(c){
     var o = byCust[c.i];
     var inScope = !!ok[c.sub];
@@ -4450,6 +4453,8 @@ function newProdStats(pi){
       return;
     }
     var row = { c:c, orders:orders, months:mCount, amt:o.amt, qty:o.qty, last:o.last, total:custTotal[c.i] || 0 };
+    // 今年只有退貨沖銷、沒有任何正式進貨單的，不能算開張
+    if (orders === 0 && o.amt <= 0){ if (inScope) retOnly.push(row); return; }
     if (!inScope){ otherChan.push(row); return; }
     if (orders >= 2) second.push(row); else first.push(row);
   });
@@ -4457,7 +4462,8 @@ function newProdStats(pi){
   second.sort(byAmt); first.sort(byAmt);
   none.sort(function(a, b){ return b.total - a.total; });
   otherChan.sort(byAmt);
-  return { second:second, first:first, none:none, otherChan:otherChan,
+  retOnly.sort(function(a, b){ return a.amt - b.amt; });
+  return { second:second, first:first, none:none, otherChan:otherChan, retOnly:retOnly,
            opened: second.length + first.length };
 }
 
@@ -4520,7 +4526,10 @@ function renderNewProd(){
       '<div class="np-sub">已開張 ' + s.opened + ' 家中，<b>' + pct(openPct, 0) + '</b> 已經完成第二筆' +
         (s.otherChan.length ? '；另有 ' + s.otherChan.length + ' 家在不計入的通路（' +
           s.otherChan.slice(0, 2).map(function(r){ return esc(r.c.name); }).join('、') +
-          (s.otherChan.length > 2 ? ' 等' : '') + '）' : '') + '</div>' +
+          (s.otherChan.length > 2 ? ' 等' : '') + '）' : '') +
+        (s.retOnly.length ? '。<span class="np-ret">⚠ ' + s.retOnly.length + ' 家今年只有退貨沖銷、沒有進貨單（' +
+          s.retOnly.slice(0, 2).map(function(r){ return esc(r.c.name); }).join('、') +
+          (s.retOnly.length > 2 ? ' 等' : '') + '），不算開張。</span>' : '') + '</div>' +
       '<div class="focus-acts">' +
         '<button type="button" class="btn tiny" data-np="first|' + p.i + '">只差第二筆名單（' + s.first.length + '）</button>' +
         '<button type="button" class="btn tiny" data-np="second|' + p.i + '">已達標名單（' + s.second.length + '）</button>' +
