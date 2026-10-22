@@ -434,6 +434,10 @@
   .np-sub b{ color:var(--ink); }
   .np-ret{ color:var(--watch); }
   .np-hit{ color:var(--good); }
+  .np-doc{ color:var(--ink-faint); font-size:10.5px; margin-left:4px; }
+  .np-hint{ color:var(--watch); font-size:10.5px; line-height:1.6; margin-top:3px; }
+  .np-warn{ color:var(--critical); font-weight:600; }
+  .np-col{ color:var(--ink-faint); }
   .np-list .dl-box{ margin-top:10px; }
 
   /* 洞察卡 */
@@ -1494,7 +1498,9 @@ function makeCollector(){
   var prodIdx = {}, custIdx = {}, products = [], customers = [], custLabels = [], custRaw = [],
       agg = {}, aggQ = {}, targets = [], byNorm = {}, yearsSeen = {}, remap = null;
   var ordSets = {};        // 每個(客戶,品項,年,月)出現過哪些發票號碼（新品第二筆訂單要用）
+  var docSets = {};        // 同上，但記的是出貨單號，只當對照用
   var ordCols = {};         // 實際採用的發票欄位抬頭，顯示在畫面上讓人核對
+  var docCols = {};
   var aggRows = {};        // 目標表裡被判定為「小計列」而略過的列名，上傳後會顯示出來讓人核對
   var audits = [];         // 目標對帳結果（與檔案自己的小計列逐月核對）
   var newNames = {};       // 目標表有、但銷售資料沒出現過的品項（可能是新品，也可能是漏抓的小計列）
@@ -1573,15 +1579,18 @@ function makeCollector(){
         c[1] = r.id; c[2] = r.raw;
       });
     },
-    add: function(ci, pi, y, m, amt, qty, ordId){
+    add: function(ci, pi, y, m, amt, qty, ordId, docId){
       var k = ci + '|' + pi + '|' + y + '|' + m;
       agg[k] = (agg[k] || 0) + amt;
       aggQ[k] = (aggQ[k] || 0) + (qty || 0);
       if (ordId){ (ordSets[k] || (ordSets[k] = {}))[ordId] = 1; }
+      if (docId){ (docSets[k] || (docSets[k] = {}))[docId] = 1; }
       yearsSeen[y] = 1;
     },
     noteOrdCol: function(kind, label){ ordCols[kind] = label; },
+    noteDocCol: function(kind, label){ docCols[kind] = label; },
     ordCols: function(){ return ordCols; },
+    docCols: function(){ return docCols; },
     notePrice: notePrice,
     /** 每個品項的「診所最大宗單價」：診所交易裡出現最多支數的那個單價；
         診所沒有交易的品項就退而求其次用全通路。 */
@@ -1607,7 +1616,7 @@ function makeCollector(){
     },
     peekYears: function(){ return Object.keys(yearsSeen).map(Number); },
     finish: function(){
-      var sum = {}, sumQ = {}, ordU = {};
+      var sum = {}, sumQ = {}, ordU = {}, docU = {};
       Object.keys(agg).forEach(function(k){
         var p = k.split('|');
         var ci = remap ? remap[+p[0]] : +p[0];      // 合併後客戶索引會變，這裡一起改寫
@@ -1619,6 +1628,11 @@ function makeCollector(){
           var u = ordU[kk] || (ordU[kk] = {});
           Object.keys(set).forEach(function(d){ u[d] = 1; });
         }
+        var dset = docSets[k];
+        if (dset){
+          var u2 = docU[kk] || (docU[kk] = {});
+          Object.keys(dset).forEach(function(d){ u2[d] = 1; });
+        }
       });
       var facts = [];
       Object.keys(sum).forEach(function(k){
@@ -1626,7 +1640,8 @@ function makeCollector(){
         if (!v && !q) return;
         var p = k.split('|');
         var o = ordU[k] ? Object.keys(ordU[k]).length : 0;
-        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q, o ]);   // 第 6 欄＝數量、第 7 欄＝不同發票張數
+        var d = docU[k] ? Object.keys(docU[k]).length : 0;
+        facts.push([ +p[0], +p[1], +p[2], +p[3], v, q, o, d ]);   // 6＝數量、7＝發票張數、8＝出貨單張數
       });
       return facts;
     }
@@ -1673,15 +1688,26 @@ var ORD_NAMES = {
   GE:  ['GUI Number','發票號碼','Invoice Number','Billing Document','Billing document']
 };
 var ORD_POS = { DED: 15, GE: 5 };
-function probeOrdCol(kind, h, idx, rowIter){
+/* 另外再記一份「出貨單號」當對照組：同事看到的常常是出貨單，
+   但公司認定的是發票。兩個數字都存起來，名單上就能直接寫
+   「發票 1 張（出貨單 2 張）」，一秒看懂為什麼沒算成重複下單。 */
+var DOC_NAMES = {
+  DED: ['Billing document','Billing Document','出貨單號','Billing Doc.'],
+  GE:  ['Billing Document','Billing document','Order Number','訂單號碼']
+};
+var DOC_POS = { DED: 14, GE: 47 };
+var ORD_BAD_RE = /(name|date|qty|quantity|amount|sales|price|class|group|material|item desc|customer name|名稱|日期|數量|金額|單價|品項)/i;
+function probeOrdCol(kind, h, idx, rowIter, which){
+  var names = (which === 'doc' ? DOC_NAMES : ORD_NAMES)[kind] || [];
   var cands = [];
-  ORD_NAMES[kind].forEach(function(n){ var k = h.indexOf(n); if (k >= 0 && cands.indexOf(k) < 0) cands.push(k); });
-  var pos = ORD_POS[kind];
+  names.forEach(function(n){ var k = h.indexOf(n); if (k >= 0 && cands.indexOf(k) < 0) cands.push(k); });
+  var pos = (which === 'doc' ? DOC_POS : ORD_POS)[kind];
   if (pos != null && cands.indexOf(pos) < 0) cands.push(pos);
   var taken = [idx.cust, idx.prod, idx.amt, idx.qty, idx.chan, idx.mk, idx.year, idx.period];
   for (var i = 0; i < cands.length; i++){
     var c = cands[i];
     if (taken.indexOf(c) >= 0) continue;
+    if (ORD_BAD_RE.test(String(h[c] == null ? '' : h[c]))) continue;   // 抬頭明顯不是單號就跳過
     var seen = 0, filled = 0, uniq = {};
     try {
       rowIter(function(row){
@@ -1736,8 +1762,11 @@ function ingestSalesRows(kind, header, rowIter, col){
   if (idx.cust < 0 || idx.prod < 0 || idx.amt < 0) throw new Error('「' + kind + '」表缺少必要欄位（客戶／品項／金額）');
   // 抬頭抓不到數量欄時，退回用固定欄位位置（DED＝AI 欄、GE＝N 欄）並驗證內容
   if (idx.qty < 0) idx.qty = probeQtyCol(kind, h, idx, rowIter);
-  idx.ord = probeOrdCol(kind, h, idx, rowIter);
+  idx.ord = probeOrdCol(kind, h, idx, rowIter, 'inv');
   if (idx.ord >= 0) col.noteOrdCol(kind, h[idx.ord] || ('第 ' + (idx.ord + 1) + ' 欄'));
+  idx.doc = probeOrdCol(kind, h, idx, rowIter, 'doc');
+  if (idx.doc === idx.ord) idx.doc = -1;
+  if (idx.doc >= 0) col.noteDocCol(kind, h[idx.doc] || ('第 ' + (idx.doc + 1) + ' 欄'));
   var used = 0, skipped = 0, scanned = 0;
   rowIter(function(row){
     scanned++;
@@ -1754,9 +1783,12 @@ function ingestSalesRows(kind, header, rowIter, col){
     var pi = col.pi(pname, kind);
     // 單號前面加上來源代號，DED 與 GE 的流水號萬一撞號也不會被當成同一張單
     var ord = idx.ord >= 0 ? String(row[idx.ord] == null ? '' : row[idx.ord]).trim() : '';
+    var doc = idx.doc >= 0 ? String(row[idx.doc] == null ? '' : row[idx.doc]).trim() : '';
     // 退貨／沖銷（金額為負）的發票不算一筆訂單 —— 新品獎金算的是「進貨」，
     // 不能讓一張退貨發票幫客戶湊到第二筆。
-    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty, (ord && amt > 0) ? kind + ':' + ord : '');
+    col.add(col.ci(cname, rawChan), pi, ym[0], ym[1], amt, qty,
+            (ord && amt > 0) ? kind + ':' + ord : '',
+            (doc && amt > 0) ? kind + ':' + doc : '');
     col.notePrice(pi, channelOf(rawChan), amt, qty, ym[0]);
     used++;
   });
@@ -2044,7 +2076,7 @@ async function buildDatasetFromFiles(files, onProgress){
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:sources,
     products: col.products, customers: col.customers, facts: col.finish(),
     targets: col.targets, prices: prices, aggSkipped: col.aggNames(), audits: col.audits(),
-    ordCols: col.ordCols(),
+    ordCols: col.ordCols(), docCols: col.docCols(),
     targetOnlyNames: col.newNames(), hadSales: totalUsed > 0
   };
 }
@@ -2074,8 +2106,8 @@ function mergeDatasets(oldDs, newDs){
       var c = ds.customers[f[0]], p = ds.products[f[1]];
       if (!c || !p) return;
       var k = cid(c) + '|' + pid(p[0], p[1]) + '|' + f[2] + '|' + f[3];
-      var o = agg[k] || (agg[k] = [0, 0, 0]);
-      o[0] += f[4]; o[1] += (f[5] || 0); o[2] += (f[6] || 0);
+      var o = agg[k] || (agg[k] = [0, 0, 0, 0]);
+      o[0] += f[4]; o[1] += (f[5] || 0); o[2] += (f[6] || 0); o[3] += (f[7] || 0);
     });
   }
   absorb(newDs, function(){ return true; });                                  // 新檔全部收下
@@ -2083,9 +2115,10 @@ function mergeDatasets(oldDs, newDs){
 
   var facts = [];
   Object.keys(agg).forEach(function(k){
-    var v = Math.round(agg[k][0]), qq = Math.round(agg[k][1]), oo = Math.round(agg[k][2] || 0);
+    var v = Math.round(agg[k][0]), qq = Math.round(agg[k][1]), oo = Math.round(agg[k][2] || 0),
+        dd = Math.round(agg[k][3] || 0);
     if (!v && !qq) return;
-    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v, qq, oo ]);
+    var q = k.split('|'); facts.push([ +q[0], +q[1], +q[2], +q[3], v, qq, oo, dd ]);
   });
 
   // 目標：新檔有帶目標就用新的，否則沿用舊的（都以品項名稱對應，索引會變）
@@ -2131,6 +2164,11 @@ function mergeDatasets(oldDs, newDs){
   return {
     v:1, kind:'uploaded', updatedAt:new Date().toISOString(), sources:srcs.slice(0, 8),
     products:products, customers:customers, facts:facts, targets:targets, prices:prices,
+    // 這幾項以前合併後會整組不見（目標對帳結果、發票欄位），要跟著傳下去
+    audits: (newDs.audits && newDs.audits.length) ? newDs.audits : (oldDs ? oldDs.audits : null),
+    aggSkipped: (newDs.aggSkipped && newDs.aggSkipped.length) ? newDs.aggSkipped : (oldDs ? oldDs.aggSkipped : null),
+    ordCols: (newDs.ordCols && Object.keys(newDs.ordCols).length) ? newDs.ordCols : (oldDs ? oldDs.ordCols : null),
+    docCols: (newDs.docCols && Object.keys(newDs.docCols).length) ? newDs.docCols : (oldDs ? oldDs.docCols : null),
     mergedMonths: Object.keys(touched).sort()
   };
 }
@@ -4056,7 +4094,8 @@ function focusCards(){
       key:'f-np', warn: np.waiting.length > 0, npCfg:true,
       label:'② MDPF 第二單達成率（以客戶計，一家只算一次）',
       num: pct(npRate, 0), unit:'（' + np.done.length + ' / ' + np.opened + ' 家）',
-      sub: '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的<b>發票</b>；' +
+      sub: npInvNote() +
+           '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的<b>發票</b>；' +
            'Ultra 一張＋HA 一張不算）；目前計入 ' +
            npChans().map(function(c){ return SUBCHAN_LABEL[c] || c; }).join('、') +
            '；另有 ' + np.none.length + ' 家尚未開張' +
@@ -4077,7 +4116,8 @@ function focusCards(){
         (np.bothCount ? ' 其中 <b>' + np.bothCount + ' 家</b>兩支都已重複下單（獎金仍只計一次）。' : '') +
         (IDX.hasOrders ? '' : ' <b class="down">這份資料沒有發票號碼</b>，目前用「下單月份數」保守認定，同月兩張發票會被算成一筆；原始檔再上傳一次就會改用發票號。'),
       expand: { key:'f-np-wait', label:'還沒成立名單（' + np.waiting.length + '）', shut:'收合名單',
-                html: npCustList(np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單') },
+                html: npCustList(np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單',
+                                 null, np.done.concat(np.waiting, np.otherChan, np.retOnly)) },
       expand2:{ key:'f-np-done', label:'已成立名單（' + np.done.length + '）', shut:'收合名單',
                 html: npCustList(np.done, '已成立（任一支 MDPF 已有兩張不同發票，粗體就是達標的那一支）') }
     });
@@ -4444,8 +4484,9 @@ function npCustStats(){
   DATA.facts.forEach(function(f){
     if (!pmap[f[1]] || f[2] !== IDX.curYear) return;
     var o = byCust[f[0]] || (byCust[f[0]] = { per:{}, amt:0, qty:0, last:0 });
-    var pp = o.per[f[1]] || (o.per[f[1]] = { pi:f[1], orders:0, months:{}, amt:0, qty:0, last:0 });
-    pp.orders += (f[6] || 0); pp.months[f[3]] = 1;
+    var pp = o.per[f[1]] || (o.per[f[1]] = { pi:f[1], orders:0, docs:0, months:{}, amt:0, qty:0, last:0 });
+    pp.orders += (f[6] || 0); pp.docs += (f[7] || 0);
+    if (f[4] > 0) pp.months[f[3]] = 1;        // 只有退貨的月份不算下單月
     pp.amt += f[4]; pp.qty += (f[5] || 0); if (f[3] > pp.last) pp.last = f[3];
     o.amt += f[4]; o.qty += (f[5] || 0); if (f[3] > o.last) o.last = f[3];
   });
@@ -4463,8 +4504,10 @@ function npCustStats(){
     }
     var items = Object.keys(o.per).map(function(k){
       var pp = o.per[k], mCount = Object.keys(pp.months).length;
-      // 有發票號就用發票去重；沒有就退回「下單月數」當保守認定
-      pp.ord = IDX.hasOrders ? pp.orders : mCount;
+      // 有發票號就用發票去重；這一支完全沒讀到發票號時才退回「下單月數」
+      // 有發票號就用發票；這一支沒讀到發票號才退回月數，而且只有正數進貨才算
+      pp.ord = (IDX.hasOrders && pp.orders > 0) ? pp.orders : (pp.amt > 0 ? mCount : 0);
+      pp.noInv = !(IDX.hasOrders && pp.orders > 0);
       pp.months_n = mCount;
       pp.name = (pmap[pp.pi] || {}).name || '';
       return pp;
@@ -4490,6 +4533,49 @@ function npCustStats(){
            opened: done.length + waiting.length };
 }
 
+/** 發票欄位說明 + 「出貨單比發票多」的案例數：同事反映對不上時，一行就能查到原因 */
+function npInvNote(){
+  if (DATA.kind !== 'uploaded') return '';
+  var oc = DATA.ordCols || {}, dc = DATA.docCols || {};
+  var cols = Object.keys(oc).map(function(k){ return k + '＝' + oc[k]; }).join('、');
+  if (!IDX.hasOrders){
+    return '<span class="np-warn">⚠ 這份資料沒有讀到發票號碼，目前用「下單月份數」保守認定（<b>同月的兩張發票會被算成一筆</b>）。' +
+           '請把原始檔再上傳一次；若仍如此，請確認 DED資料 的 <b>Local Reference</b>（P 欄）與 GE資料 的 <b>GUI Number</b>（F 欄）有值。</span><br>';
+  }
+  var diff = 0;
+  var pmap = {}; npProducts().forEach(function(p){ pmap[p.i] = 1; });
+  DATA.facts.forEach(function(f){
+    if (pmap[f[1]] && f[2] === IDX.curYear && (f[7] || 0) > (f[6] || 0)) diff++;
+  });
+  return '<span class="np-col">發票欄位：' + esc(cols || '—') +
+         (Object.keys(dc).length ? '（對照用出貨單欄位：' + esc(Object.keys(dc).map(function(k){ return k + '＝' + dc[k]; }).join('、')) + '）' : '') +
+         (diff ? '；其中 <b>' + diff + '</b> 筆是「同月多張出貨單、但同一張發票」，依公司規則仍算一筆' : '') +
+         '</span><br>';
+}
+
+/* 「兩張發票卻沒算到」的另一個常見原因：同一家診所在原始檔裡有兩個名稱
+   （例如「○○眼科診所」與「某某光學公司-○○眼科診所」），合併規則沒抓起來，
+   於是各自只有一張發票。這裡做輕量比對，在名單上直接點出可疑的那一家。 */
+function npCore(name){
+  return String(name || '')
+    .replace(/[^0-9A-Za-z\u4e00-\u9fff]/g, '')
+    .replace(/(股份有限公司|有限公司|眼科診所|眼科|診所|藥局|藥房|光學|醫院|分院|院區)/g, '');
+}
+function npSimilarHint(row, pool){
+  var a = npCore(row.c.name);
+  if (a.length < 2) return '';
+  var hit = null;
+  pool.forEach(function(o){
+    if (hit || o.c.i === row.c.i) return;
+    var b = npCore(o.c.name);
+    if (b.length < 2) return;
+    if (a.indexOf(b) >= 0 || b.indexOf(a) >= 0) hit = o;
+  });
+  if (!hit) return '';
+  return '<div class="np-hint">⚠ 檔案裡另有「' + esc(hit.c.name) + '」也有 MDPF 進貨，' +
+         '若其實是同一家，合併後就會成立（名稱不同，系統沒有自動合併）。</div>';
+}
+
 function npShort(name){
   return String(name || '').replace(/SYSTANE\s*/i, '').replace(/\s*10ML/i, '').replace(/ULTRA/i, 'Ultra');
 }
@@ -4498,11 +4584,14 @@ function npShort(name){
 function npItemsText(items){
   if (!items.length) return '—';
   return items.map(function(it){
-    var n = IDX.hasOrders ? it.ord + ' 張' : it.months_n + ' 個月';
-    return npShort(it.name) + ' ' + (it.ord >= 2 ? '<b class="np-hit">' + n + '</b>' : n);
+    var n = it.noInv ? it.months_n + ' 個月' : it.ord + ' 張';
+    var txt = npShort(it.name) + ' ' + (it.ord >= 2 ? '<b class="np-hit">' + n + '</b>' : n);
+    // 同事看到的常常是出貨單：兩個數字不一樣時直接寫出來，省掉來回確認
+    if (!it.noInv && it.docs > it.ord) txt += '<span class="np-doc">（出貨單 ' + it.docs + ' 張，同一張發票）</span>';
+    return txt;
   }).join('、');
 }
-function npCustList(rows, cap, kind){
+function npCustList(rows, cap, kind, pool){
   if (!rows.length) return '<div class="dl-box"><p class="dl-cap">' + esc(cap) + '</p>' +
     '<p class="dl-empty">目前沒有。</p></div>';
   var showQty = IDX.hasQty;
@@ -4518,7 +4607,7 @@ function npCustList(rows, cap, kind){
         '<td>' + (SUBCHAN_LABEL[r.c.sub] || r.c.channel) + '</td>' +
         (kind === 'none'
           ? '<td class="num">' + compact(r.total) + '</td>'
-          : '<td>' + npItemsText(r.items) + '</td>' +
+          : '<td>' + npItemsText(r.items) + (pool ? npSimilarHint(r, pool) : '') + '</td>' +
             '<td class="num">' + r.last + ' 月</td>' +
             '<td class="num">' + compact(r.amt) + '</td>' +
             (showQty ? '<td class="num">' + nf.format(r.qty) + '</td>' : '')) +
