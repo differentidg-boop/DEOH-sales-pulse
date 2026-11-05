@@ -144,6 +144,10 @@
   .kpi-value .unit{ font-size:13px; color:var(--ink-faint); font-family:'IBM Plex Sans',sans-serif; margin-left:3px; }
   .kpi-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:2px; }
   .kpi-meta{ display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--ink-muted); margin-top:6px; flex-wrap:wrap; }
+  .kpi-figs{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    font-size:11.5px; color:var(--ink-muted); margin-top:7px; padding-top:6px; border-top:1px solid var(--border); }
+  .kpi-figs b{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600; }
+  .kpi-exact{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); margin-top:3px; letter-spacing:-.01em; }
   .box-need{ color:var(--critical); font-weight:600; }
   .box-over{ color:var(--good); font-weight:600; }
   .box-unit{ display:block; font-size:10px; color:var(--ink-faint); font-weight:400; }
@@ -412,6 +416,11 @@
   .land-row .lr-v{ font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--ink); }
   .land-row .lr-n{ color:var(--ink-faint); font-size:11px; margin-left:auto; }
   .land-note{ font-size:11px; color:var(--ink-faint); line-height:1.7; margin:10px 0 0; }
+  .land-row .lr-v.good{ color:var(--good); } .land-row .lr-v.watch{ color:var(--watch); }
+  .land-row .lr-v.critical{ color:var(--critical); }
+  td.verdict{ font-size:12px; font-weight:600; }
+  td.verdict.good{ color:var(--good); } td.verdict.watch{ color:var(--watch); }
+  td.verdict.critical{ color:var(--critical); } td.verdict.none{ color:var(--ink-faint); font-weight:400; }
 
   /* MDPF 新品追蹤 */
   .np-cfg{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:12px;
@@ -673,7 +682,8 @@
     .kpi-sub{ font-size:10px; line-height:1.35; }
     .progress{ height:4px; margin-top:7px; }
     .kpi-meta{ font-size:10px; margin-top:5px; }
-    .kpi-meta > span:last-child{ display:none; }   /* 只留最關鍵那一則（缺口／超前、較去年多少） */
+    .kpi-figs{ font-size:10px; margin-top:5px; padding-top:5px; }
+    .kpi-exact{ display:none; }                    /* 手機只留「萬」那一行，到元的數字收起來 */
   }
 
 </style>
@@ -2970,12 +2980,20 @@ function achieveCard(label, sub, s, key){
   var gapTxt = s.gap == null ? '尚未上傳目標'
     : s.gap > 0 ? '<span class="gap-behind">缺口 ' + compact(s.gap) + '</span>'
                 : '<span class="gap-ahead">超前 ' + compact(Math.abs(s.gap)) + '</span>';
+  // 達成率只看得到百分比不夠用：現在做了多少、目標多少、差多少，三個金額都要看得到。
+  // 上面那行用「萬」好讀，下面那行給到元，報告或對帳可以直接抄。
+  var exact = s.target == null ? '' :
+    'NT$ ' + nf.format(Math.round(s.actual)) + ' ／ ' + nf.format(Math.round(s.target)) +
+    (s.gap == null ? '' : '　' + (s.gap > 0 ? '缺 ' : '超 ') + nf.format(Math.round(Math.abs(s.gap))));
   return '<div class="kpi-card kpi-' + key + ' state-' + cls + '">' +
     '<div class="kpi-top"><span class="kpi-label">' + label + '</span><span class="kpi-badge ' + cls + '">' + badge + '</span></div>' +
     '<div class="kpi-value">' + pct(s.achievement, 0) + '</div>' +
     '<div class="kpi-sub">' + sub + '</div>' +
     '<div class="progress"><i style="width:' + width + '%"></i></div>' +
-    '<div class="kpi-meta"><span>' + gapTxt + '</span><span>目標 ' + compact(s.target) + '</span></div>' +
+    '<div class="kpi-figs"><span>實績 <b>' + compact(s.actual) + '</b></span>' +
+      '<span>目標 <b>' + (s.target == null ? '—' : compact(s.target)) + '</b></span></div>' +
+    (exact ? '<div class="kpi-exact">' + exact + '</div>' : '') +
+    '<div class="kpi-meta"><span>' + gapTxt + '</span></div>' +
     '</div>';
 }
 
@@ -2989,8 +3007,10 @@ function growthCard(label, sub, s, key){
     '<div class="kpi-value ' + (s.yoy == null ? '' : s.yoy >= 0 ? 'pos' : 'neg') + '">' + pctSigned(s.yoy) + '</div>' +
     '<div class="kpi-sub">' + sub + '</div>' +
     '<div class="progress"><i style="width:' + width + '%"></i></div>' +
-    '<div class="kpi-meta"><span>' + (s.yoy == null ? '—' : (s.actual >= s.prior ? '較去年同期多 ' : '較去年同期少 ') + compact(Math.abs(s.actual - s.prior))) + '</span>' +
-      '<span>去年同期 ' + compact(s.prior) + '</span></div>' +
+    '<div class="kpi-figs"><span>今年 <b>' + compact(s.actual) + '</b></span>' +
+      '<span>去年同期 <b>' + compact(s.prior) + '</b></span></div>' +
+    '<div class="kpi-exact">NT$ ' + nf.format(Math.round(s.actual)) + ' ／ ' + nf.format(Math.round(s.prior)) + '</div>' +
+    '<div class="kpi-meta"><span>' + (s.yoy == null ? '—' : (s.actual >= s.prior ? '較去年同期多 ' : '較去年同期少 ') + compact(Math.abs(s.actual - s.prior))) + '</span></div>' +
     '</div>';
 }
 
@@ -4084,42 +4104,18 @@ function focusCards(){
     });
   }
 
-  /* ---------- ② MDPF 第二單達成率（以客戶計，一家只算一次） ---------- */
-  /* 獎金規則：一家客戶只能算一次，只要「其中一支 MDPF 重複下單」就成立；
-     但重複必須是同一支（Ultra 兩張、或 HA 兩張），Ultra 一張＋HA 一張不算。 */
-  if (npProducts().length){
-    var np = npCustStats();
-    var npRate = np.opened ? np.done.length / np.opened : 0;
+  /* ---------- ② MDPF 第二單達成率（獎金；跟 ① 並排） ---------- */
+  var bc = bonusCard();
+  if (bc){
     out.push({
-      key:'f-np', warn: np.waiting.length > 0, npCfg:true,
-      label:'② MDPF 第二單達成率（以客戶計，一家只算一次）',
-      num: pct(npRate, 0), unit:'（' + np.done.length + ' / ' + np.opened + ' 家）',
-      sub: npInvNote() +
-           '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的<b>發票</b>；' +
-           'Ultra 一張＋HA 一張不算）；目前計入 ' +
-           npChans().map(function(c){ return SUBCHAN_LABEL[c] || c; }).join('、') +
-           '；另有 ' + np.none.length + ' 家尚未開張' +
-           (np.retOnly.length ? '、' + np.retOnly.length + ' 家只有退貨沖銷（不算開張）' : ''),
-      rows: np.prods.map(function(p){
-        var q = np.qualByProd[p.i] || 0, o2 = np.openByProd[p.i] || 0;
-        return { k: npShort(p.name), v: q + ' / ' + o2 + ' 家（' + pct(o2 ? q / o2 : 0, 0) + '）',
-                 w: o2 ? q / o2 * 100 : 0, hl: q > 0 };
-      }),
-      read: (np.waiting.length
-        ? '還沒成立的有 <b class="down">' + np.waiting.length + ' 家</b>：' +
-          np.waiting.slice(0, 4).map(function(r){
-            var names = r.items.map(function(it){ return npShort(it.name); });
-            return esc(r.c.name) + '（' + names.join('＋') + (names.length > 1 ? ' 各 1 張' : ' 1 張') + '）';
-          }).join('、') + (np.waiting.length > 4 ? ' 等' : '') +
-          '，任何一支補第二張單就算。'
-        : '已開張的客戶都成立了。') +
-        (np.bothCount ? ' 其中 <b>' + np.bothCount + ' 家</b>兩支都已重複下單（獎金仍只計一次）。' : '') +
-        (IDX.hasOrders ? '' : ' <b class="down">這份資料沒有發票號碼</b>，目前用「下單月份數」保守認定，同月兩張發票會被算成一筆；原始檔再上傳一次就會改用發票號。'),
-      expand: { key:'f-np-wait', label:'還沒成立名單（' + np.waiting.length + '）', shut:'收合名單',
-                html: npCustList(np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單',
-                                 null, np.done.concat(np.waiting, np.otherChan, np.retOnly)) },
-      expand2:{ key:'f-np-done', label:'已成立名單（' + np.done.length + '）', shut:'收合名單',
-                html: npCustList(np.done, '已成立（任一支 MDPF 已有兩張不同發票，粗體就是達標的那一支）') }
+      key:'f-np', warn: bc.np.waiting.length > 0, npCfg:true,
+      label:'② ' + bc.label, num: bc.num, unit: bc.unit,
+      sub: bc.sub, rows: bc.rows, read: bc.read,
+      expand: { key:'b-np-wait', label:'還沒成立名單（' + bc.np.waiting.length + '）', shut:'收合名單',
+                html: npCustList(bc.np.waiting, '已開張、但還沒有任何一支重複下單 —— 這份就是這個月要追的名單',
+                                 null, bc.np.done.concat(bc.np.waiting, bc.np.otherChan, bc.np.retOnly)) },
+      expand2:{ key:'b-np-done', label:'已成立名單（' + bc.np.done.length + '）', shut:'收合名單',
+                html: npCustList(bc.np.done, '已成立（任一支 MDPF 已有兩張不同發票，粗體就是達標的那一支）') }
     });
   }
 
@@ -4235,7 +4231,7 @@ function wireInsightActions(){
     b.addEventListener('click', function(){
       var k = b.getAttribute('data-exp');
       state.insExpand[k] = !state.insExpand[k];
-      renderInsights();
+      renderInsights();          // 內部會重畫 renderFocus 並重新掛事件
     });
   });
   Array.prototype.forEach.call(scope.querySelectorAll('[data-tg]'), function(b){
@@ -4326,6 +4322,12 @@ function landingFor(pids, setMonth){
     pids.forEach(function(pi){ var pm = IDX.prodMonthly[pi]; if (pm) s += pm.cur[k2-1]; });
     last3 += s; last3n++;
   }
+  var monthly = [];
+  for (var k3 = 1; k3 <= 12; k3++){
+    var v3 = 0;
+    pids.forEach(function(pi){ var pm = IDX.prodMonthly[pi]; if (pm) v3 += pm.cur[k3-1]; });
+    monthly.push(v3);
+  }
   var runRate = last3n ? last3 / last3n : 0;
   var byRun = cur + runRate * rest;
   var seasonRatio = priorFull > 0 ? prior / priorFull : 0;
@@ -4334,7 +4336,12 @@ function landingFor(pids, setMonth){
   var hi = bySeason == null ? byRun : Math.max(byRun, bySeason);
   var needTotal = target - cur;
   return {
-    month:m, rest:rest, cur:cur, prior:prior, priorFull:priorFull, target:target,
+    month:m, rest:rest, cur:cur, prior:prior, priorFull:priorFull, target:target, monthly:monthly,
+    needFor: function(ratio){
+      if (rest <= 0) return null;
+      var gap = target * ratio - cur;
+      return gap <= 0 ? 0 : gap / rest;
+    },
     runRate:runRate, byRun:byRun, bySeason:bySeason, lo:lo, hi:hi,
     needTotal:needTotal,
     needPerMonth: rest > 0 ? needTotal / rest : null,
@@ -4348,6 +4355,62 @@ function landingBoxes(pi, amount){
   var u = IDX.unitPrice[pi];
   if (!u || !amount) return '';
   return '約 ' + nf.format(Math.round(Math.abs(amount) / u)) + ' 盒';
+}
+
+function bonusCard(){
+  if (!npProducts().length) return null;
+  var np = npCustStats();
+  var rate = np.opened ? np.done.length / np.opened : 0;
+  return {
+    np:np, rate:rate,
+    label:'MDPF 第二單達成率（以客戶計，一家只算一次）',
+    num: pct(rate, 0), unit:'（' + np.done.length + ' / ' + np.opened + ' 家）',
+    sub: npInvNote() +
+         '只要<b>其中一支 MDPF 重複下單</b>就算成立（同一支要兩張不同的<b>發票</b>；' +
+         'Ultra 一張＋HA 一張不算）；目前計入 ' +
+         npChans().map(function(c){ return SUBCHAN_LABEL[c] || c; }).join('、') +
+         '；另有 ' + np.none.length + ' 家尚未開張' +
+         (np.retOnly.length ? '、' + np.retOnly.length + ' 家只有退貨沖銷（不算開張）' : ''),
+    rows: np.prods.map(function(pp){
+      var q = np.qualByProd[pp.i] || 0, o2 = np.openByProd[pp.i] || 0;
+      return { k: npShort(pp.name), v: q + ' / ' + o2 + ' 家（' + pct(o2 ? q / o2 : 0, 0) + '）',
+               w: o2 ? q / o2 * 100 : 0, hl: q > 0 };
+    }),
+    read: (np.waiting.length
+      ? '還沒成立的有 <b class="down">' + np.waiting.length + ' 家</b>：' +
+        np.waiting.slice(0, 4).map(function(r){
+          var names = r.items.map(function(it){ return npShort(it.name); });
+          return esc(r.c.name) + '（' + names.join('＋') + (names.length > 1 ? ' 各 1 張' : ' 1 張') + '）';
+        }).join('、') + (np.waiting.length > 4 ? ' 等' : '') + '，任何一支補第二張發票就算。'
+      : '已開張的客戶都成立了。') +
+      (np.bothCount ? ' 其中 <b>' + np.bothCount + ' 家</b>兩支都已重複下單（獎金仍只計一次）。' : '')
+  };
+}
+
+/* 「100% 做得到嗎」不做機率模型，用今年自己的實績說話：
+   今年有幾個月的業績 ≥ 剩下每個月需要的量？做到過幾次，心裡就有底。 */
+function feasibility(L){
+  if (L.rest <= 0) return '<div class="land-rows"><div class="land-row"><span class="lr-k">已經是最後一個月</span></div></div>';
+  if (L.needTotal <= 0) return '<div class="land-rows"><div class="land-row"><span class="lr-k up">已達標，剩下的月份都是超標空間</span></div></div>';
+  var need = L.needPerMonth, hit = 0, seen = 0, best = 0;
+  for (var m = 1; m <= L.month; m++){
+    var v = L.monthly[m-1] || 0;
+    if (v <= 0) continue;
+    seen++; if (v >= need) hit++;
+    if (v > best) best = v;
+  }
+  var ratio = L.runRate > 0 ? need / L.runRate : 99;
+  var tone = (hit >= Math.ceil(seen / 2) && ratio <= 1.05) ? 'good'
+           : (hit > 0 && ratio <= 1.25) ? 'watch' : 'critical';
+  var verdict = tone === 'good' ? '很有機會' : tone === 'watch' ? '要加把勁' : '難度偏高';
+  return '<div class="land-rows">' +
+    '<div class="land-row"><span class="lr-k">100% 的可能性</span>' +
+      '<span class="lr-v ' + tone + '">' + verdict + '</span>' +
+      '<span class="lr-n">今年 ' + seen + ' 個月裡有 <b>' + hit + ' 個月</b>做到 ' + compact(need) + ' 以上</span></div>' +
+    '<div class="land-row"><span class="lr-k">今年最好的一個月</span>' +
+      '<span class="lr-v">' + compact(best) + '</span>' +
+      '<span class="lr-n">需求是近 3 個月平均的 ' + (L.runRate > 0 ? (need / L.runRate).toFixed(2) : '—') + ' 倍</span></div>' +
+  '</div>';
 }
 
 function renderLanding(){
@@ -4390,7 +4453,7 @@ function renderLanding(){
       '</div>' +
     '</div>' +
     '<div class="land-card need">' +
-      '<div class="focus-label">要達成年度目標，剩下每個月要做</div>' +
+      '<div class="focus-label">要達成年度目標（100%），剩下每個月要做</div>' +
       '<div class="focus-big"><span class="focus-num">' +
         (L.needPerMonth == null ? '—' : (L.needTotal <= 0 ? '已達標' : compact(L.needPerMonth))) +
         '</span><span class="focus-unit">／月</span></div>' +
@@ -4402,7 +4465,7 @@ function renderLanding(){
               (L.needPerMonth > L.runRate
                 ? '<span class="down">多 ' + pct(L.needPerMonth / L.runRate - 1, 0) + '</span>'
                 : '<span class="up">少 ' + pct(1 - L.needPerMonth / L.runRate, 0) + '</span>') : '')) +
-      '</div>' +
+      '</div>' + feasibility(L) +
     '</div>';
 
   // 逐品項：哪幾支會扯後腿，一眼看得出來
@@ -4416,28 +4479,57 @@ function renderLanding(){
   });
   var table = '<div class="table-scroll"><table class="rwd"><thead><tr>' +
       '<th>品項</th><th class="num">YTD 實績</th><th class="num">年度目標</th>' +
-      '<th class="num">Landing 預估</th><th class="num">預估達成率</th><th class="num">剩餘月均需求</th>' +
+      '<th class="num">預估達成率</th><th>判定</th>' +
+      '<th class="num">達 90% 需每月</th><th class="num">達 100% 需每月</th>' +
     '</tr></thead><tbody>' +
     (rows.length ? rows.map(function(r){
       var l = r.l, mid2 = (l.lo + l.hi) / 2;
-      var a = l.target > 0 ? mid2 / l.target : null, c = achCls(a);
-      var need = l.needPerMonth == null || l.needTotal <= 0 ? '已達標' :
-        compact(l.needPerMonth) + (IDX.hasQty && IDX.unitPrice[r.p.i] ? '<span class="box-unit">' + landingBoxes(r.p.i, l.needPerMonth) + '／月</span>' : '');
+      var a = l.target > 0 ? mid2 / l.target : null;
+      var aLo = l.target > 0 ? l.lo / l.target : null;
+      var c = achCls(a);
+      function needCell(ratio){
+        if (!l.target) return '—';
+        var v = l.needFor(ratio);
+        if (v == null) return '—';
+        if (v <= 0) return '<span class="up">已達成</span>';
+        return compact(v) + (IDX.hasQty && IDX.unitPrice[r.p.i]
+          ? '<span class="box-unit">' + landingBoxes(r.p.i, v) + '／月</span>' : '');
+      }
+      // 判定一律換算成「比近 3 個月平均要多做幾成」，才是可以拿去談的語言。
+      // 保守估（兩種算法取低者）就過 100% 才敢寫穩達標。
+      var verdict, vCls;
+      var n90 = l.needFor(0.9), n100 = l.needFor(1), rr = l.runRate;
+      var over = function(v){ return (rr > 0 && v != null && v > 0) ? v / rr - 1 : null; };
+      var o90 = over(n90), o100 = over(n100);
+      var moreTxt = function(o){ return (o == null || o <= 0) ? '' : '（每月要比近 3 個月多 ' + pct(o, 0) + '）'; };
+      if (a == null){ verdict = '未設目標'; vCls = 'none'; }
+      else if (aLo >= 1){
+        var ov = Math.round((aLo - 1) * 100);
+        verdict = ov > 0 ? '穩達標，可望超標 ' + ov + '%' : '穩達標（剛好壓線）';
+        vCls = 'good';
+      }
+      else if (a >= 1){ verdict = '可望達標' + moreTxt(o100); vCls = 'watch'; }
+      else if (o90 != null && o90 <= 0.1){ verdict = '90% 拚得到' + moreTxt(o90); vCls = 'watch'; }
+      else if (o90 != null && o90 <= 0.5){ verdict = '90% 要加把勁' + moreTxt(o90); vCls = 'critical'; }
+      else { verdict = '90% 難度高' + moreTxt(o90); vCls = 'critical'; }
       return '<tr><td class="name">' + esc(r.p.name) +
           ' <span class="tag ' + r.p.category.toLowerCase() + '">' + r.p.category + '</span></td>' +
         '<td class="num" data-l="YTD 實績">' + compact(l.cur) + '</td>' +
         '<td class="num" data-l="年度目標">' + (l.target ? compact(l.target) : '—') + '</td>' +
-        '<td class="num" data-l="Landing">' + (Math.abs(l.hi - l.lo) < Math.max(l.hi * 0.005, 1)
-            ? compact(l.lo) : compact(l.lo) + '～' + compact(l.hi)) + '</td>' +
         '<td class="num" data-l="預估達成率"><span class="badge-row ' + c + '"><span class="badge-dot"></span>' +
-          (a == null ? '—' : pct(a, 0)) + '</span></td>' +
-        '<td class="num" data-l="剩餘月均需求">' + need + '</td></tr>';
-    }).join('') : '<tr><td colspan="6" class="empty-note">這個範圍沒有可估算的品項</td></tr>') +
+          (a == null ? '—' : pct(a, 0)) + '</span>' +
+          '<span class="box-unit">Landing ' + (Math.abs(l.hi - l.lo) < Math.max(l.hi * 0.005, 1)
+            ? compact(l.lo) : compact(l.lo) + '～' + compact(l.hi)) + '</span></td>' +
+        '<td data-l="判定" class="verdict ' + vCls + '">' + verdict + '</td>' +
+        '<td class="num" data-l="達 90% 需每月">' + needCell(0.9) + '</td>' +
+        '<td class="num" data-l="達 100% 需每月">' + needCell(1) + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty-note">這個範圍沒有可估算的品項</td></tr>') +
     '</tbody></table></div>';
 
   host.innerHTML = '<div class="land-grid">' + cards + '</div>' + table +
     '<p class="land-note">預估只用已經發生的出貨資料推算，不含任何人為調整；' +
-    '① 對最近的手感敏感、② 會把去年的年底季節性算進去，實際落點通常在兩者之間。</p>';
+    '① 對最近的手感敏感、② 會把去年的年底季節性算進去，實際落點通常在兩者之間。' +
+    '「判定」用保守估（兩種算法取低者）為準：保守估就過 100% 才寫穩達標。</p>';
 }
 
 /* ==========================================================================
